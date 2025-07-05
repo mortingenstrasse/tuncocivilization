@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tunç Alıcıoğlu's Civilization 1.0</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0d1a26;
+            color: #fff;
+            font-family: 'Garamond', 'Times New Roman', serif;
+        }
+        
+        /* Tüm ekranı kaplayan genel konteyner */
+        .menu-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            height: 100%;
+            text-align: center;
+            background: radial-gradient(ellipse at center, rgba(13, 26, 38, 0.7) 0%, rgba(13, 26, 38, 1) 100%);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        /* Video Penceresi Stili */
+        .video-window {
+            width: 60vw;
+            max-width: 800px;
+            height: 33.75vw;
+            max-height: 450px;
+            border: 3px solid #f39c12;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 30px;
+            box-shadow: 0 0 30px rgba(243, 156, 18, 0.4);
+            position: relative;
+            background-color: #000; /* Video yüklenemezse siyah görünsün */
+        }
+        .video-window video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        h1 {
+            font-size: 3em;
+            text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.7);
+            margin-bottom: 20px;
+            color: #e0e0e0;
+        }
+        h1 strong {
+             color: #f39c12;
+        }
+        
+        .menu-options { list-style: none; padding: 0; }
+        .menu-options li { margin: 15px 0; }
+        .menu-button { font-family: 'Garamond', 'Times New Roman', serif; font-size: 1.5em; color: #ecf0f1; background: none; border: 2px solid #ecf0f1; padding: 8px 35px; cursor: pointer; transition: all 0.3s ease; text-decoration: none; }
+        .menu-button:hover { background-color: #f39c12; border-color: #f39c12; color: #000; }
+        
+        /* Giriş Ekranı Stilleri */
+        #enter-screen h2 { font-size: 2.5em; margin-bottom: 10px; }
+        #enter-screen p { font-size: 1.2em; color: #bdc3c7; margin-bottom: 30px; }
+        #enter-button {
+            font-size: 2em;
+            padding: 15px 50px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        
+        /* Gizleme/Gösterme için yardımcı sınıf */
+        .hidden {
+            opacity: 0;
+            pointer-events: none; /* Gizliyken tıklanamaz yap */
+        }
+    </style>
+</head>
+<body>
+
+    <!-- GİRİŞ EKRANI (Başlangıçta görünür) -->
+    <div id="enter-screen" class="menu-container">
+        <div>
+            <h2>Welcome</h2>
+            <p>Click to enter the world of Civilization</p>
+            <button id="enter-button" class="menu-button">ENTER</button>
+        </div>
+    </div>
+
+    <!-- ANA MENÜ (Başlangıçta gizli) -->
+    <div id="main-menu" class="menu-container hidden">
+        <div class="video-window">
+            <video muted loop id="main-video"> <!-- `autoplay` kaldırıldı, JS ile başlatılacak -->
+                <source src="background.mp4" type="video/mp4">
+            </video>
+        </div>
+
+        <h1><strong>Tunç Alıcıoğlu's</strong><br>Civilization 1.0</h1>
+        <ul class="menu-options">
+            <li><a href="game.html" class="menu-button">Single Game</a></li>
+            <li><button class="menu-button disabled">Multiplayer (Soon)</button></li>
+            <li><button class="menu-button disabled">Options (Soon)</button></li>
+        </ul>
+    </div>
+    
+    <audio id="mainMenuMusic" loop>
+        <source src="mainGameMusic.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        const enterButton = document.getElementById('enter-button');
+        const enterScreen = document.getElementById('enter-screen');
+        const mainMenu = document.getElementById('main-menu');
+        const music = document.getElementById('mainMenuMusic');
+        const video = document.getElementById('main-video');
+
+        enterButton.addEventListener('click', () => {
+            // Medyaları başlatmayı dene (video ve müzik)
+            // Tarayıcılar genellikle aynı anda birden fazla medya oynatımına izin verir
+            // eğer kullanıcı etkileşimiyle tetiklenmişse.
+            const musicPromise = music.play();
+            const videoPromise = video.play();
+
+            if (musicPromise !== undefined) {
+                musicPromise.catch(error => console.error("Music play failed:", error));
+            }
+            if (videoPromise !== undefined) {
+                videoPromise.catch(error => console.error("Video play failed:", error));
+            }
+            
+            // Ekranları değiştir (geçiş efektiyle)
+            enterScreen.classList.add('hidden');
+            mainMenu.classList.remove('hidden');
+        });
+    </script>
+
+</body>
+</html>
