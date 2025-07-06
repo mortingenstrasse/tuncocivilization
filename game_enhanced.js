@@ -290,7 +290,7 @@ class Queen extends Unit {
 // =======================================================================
 class ResourceManager {
     constructor() { 
-        this.resources = { wood: 50, gold: 30, stone: 20, meat: 15, grain: 25, fish: 10 }; 
+        this.resources = { wood: 50, gold: 30, stone: 20, meat: 15, grain: 25, fish: 30 }; 
     }
     addResource(type, amount) { 
         if (this.resources[type] !== undefined) this.resources[type] += amount; 
@@ -312,12 +312,12 @@ class BuildingSystem {
     constructor(game) {
         this.game = game;
         this.unitCosts = {
-            worker: { wood: 10, meat: 5 },
+            worker: { wood: 10, meat: 5, fish: 3 },
             pawn: { wood: 25, stone: 10 },
             rook: { stone: 400, gold: 400 },
-            bishop: { wood: 800, gold: 350 },
-            knight: { meat: 500, stone: 300 },
-            queen: { wood: 3000, meat: 1000, gold: 1000, stone: 1500 }
+            bishop: { wood: 800, gold: 350, fish: 60 },
+            knight: { meat: 500, stone: 300, fish: 30 },
+            queen: { wood: 3000, meat: 1000, gold: 1000, stone: 1500, fish:120 }
         };
     }
     
@@ -365,6 +365,16 @@ class BuildingSystem {
         }
         
         this.game.units.push(newUnit);
+        // ==========================================================
+                // YENİ: Üretim mesajını hamle günlüğüne yazdır
+                // ==========================================================
+                const message = `Produced a ${unitType.charAt(0).toUpperCase() + unitType.slice(1)}`;
+                const color = 'rgba(52, 152, 219, 0.9)'; // Mavi bir renk
+                this.game.logSpecialMessage(message, color);
+                // ==========================================================
+                
+                return;
+        
         console.log(`${owner} produced ${unitType} at (${spawnLocation.x}, ${spawnLocation.y})`);
         this.game.updateUI();
         return true;
@@ -482,6 +492,8 @@ Game.prototype.showWelcomePopup = function() {
         <ul>
             <li>- Use <strong>WASD</strong> keys to move the camera around the map.</li>
             <li>- Produce <strong>Workers</strong> to gather resources automatically each turn.</li>
+            <!-- YENİ EKLENEN BİLGİ SATIRI -->
+            <li>- <strong>Each Worker</strong> provides +10 Wood, +10 Stone, +5 Meat, +10 Grain, +3 Gold, +3 Fish per turn.</li>
             <li>- Use your resources to build a powerful army based on <strong>chess pieces</strong>.</li>
             <li>- Click the <strong>End Turn</strong> button to finish your turn and let the AI play.</li>
         </ul>
@@ -493,7 +505,7 @@ Game.prototype.showWelcomePopup = function() {
             <li><strong>Bishop:</strong> Moves in diagonal lines.</li>
             <li><strong>Knight:</strong> Moves in an "L" shape (2+1 squares) and can jump over units.</li>
             <li><strong>Queen:</strong> The most powerful piece, combines Rook and Bishop movements.</li>
-            <li><strong>King:</strong> Your main base. It cannot move. If it's destroyed, you lose!</li>
+            <li><strong>King:</strong> Your main base. If it's destroyed, you lose! Long Live The King!</li>
         </ul>
 
         <button id="close-popup-btn">Got It, Let's Play!</button>
@@ -1438,10 +1450,40 @@ Game.prototype.screenToWorld = function(screenX, screenY) {
     return { x: screenX - this.canvas.width / 2 + this.camera.x, y: screenY - this.canvas.height / 2 + this.camera.y }; 
 };
 
-Game.prototype.worldToTile = function(worldX, worldY) {
+/*Game.prototype.worldToTile = function(worldX, worldY) {
     const tileX = Math.round((worldX / (this.tileSize.width / 2) + worldY / (this.tileSize.height / 2)) / 2);
     const tileY = Math.round((worldY / (this.tileSize.height / 2) - worldX / (this.tileSize.width / 2)) / 2);
     if (this.isValidTile(tileX, tileY)) return { x: tileX, y: tileY };
     return null;
 };
+*/
+// =======================================================================
+// KOORDİNAT SİSTEMİ - YARIM KARO OFSET DÜZELTMESİ
+// =======================================================================
+Game.prototype.worldToTile = function(worldX, worldY) {
+    const halfTileWidth = this.tileSize.width / 2;
+    const halfTileHeight = this.tileSize.height / 2;
+
+    // Orijinal formülünüz
+    const term1 = worldX / halfTileWidth;
+    const term2 = worldY / halfTileHeight;
+
+    // --- DEĞİŞİKLİK BURADA ---
+    // Sonucu yuvarlamadan önce "yarım karo" (0.5) kadar geri kaydırıyoruz.
+    // Bu, yuvarlama işleminin doğru karoyu seçmesini sağlar.
+    const tileX = Math.round((term1 + term2) / 2 - 0.5);
+    const tileY = Math.round((term2 - term1) / 2);
+    // -------------------------
+
+    if (this.isValidTile(tileX, tileY)) {
+        return { x: tileX, y: tileY };
+    }
+    return null;
+};
+
+// =======================================================================
+// NİHAİ KOORDİNAT FONKSİYONLARI (TIKLAMA KAYMASI DÜZELTİLDİ)
+// =======================================================================
+
+// ... diğer koordinat fonksiyonları (tileToWorld, tileToScreen, screenToWorld) aynı kalabilir ...
 

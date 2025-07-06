@@ -49,16 +49,78 @@
 
         <!-- Game Controls -->
         <div id="gameControls">
+            <!-- ========================================================== -->
+        <!-- YENİ: END TURN BUTONU İÇİN ÖZEL KONTEYNER -->
+        <!-- ========================================================== -->
+        <div id="end-turn-container">
+            <button id="endTurn" class="end-turn-btn">
+                <span class="icon">▶</span>
+                <div class="text">
+                    <span class="main-text">End Turn</span>
+                    <span class="sub-text">Continue</span>
+                </div>
+            </button>
+        </div>
+        <!-- ========================================================== -->
             <div id="unitPanel">
                 <h3>Units</h3>
-                <div id="unitButtons">
-                    <button id="produceWorker" class="unit-btn">Worker (wood: 10, meat: 5)</button>
-                    <button id="producePawn" class="unit-btn">Pawn (wood: 25, stone: 10)</button>
-                    <button id="produceRook" class="unit-btn">Rook (stone: 400, gold: 400)</button>
-                    <button id="produceBishop" class="unit-btn">Bishop (wood: 800, gold: 350)</button>
-                    <button id="produceKnight" class="unit-btn">Knight (meat: 500, stone: 300)</button>
-                    <button id="produceQueen" class="unit-btn">Queen (wood: 3000, meat: 1000, gold: 1000, stone: 1500)</button>
-                </div>
+                <!-- game.html dosyasındaki #unitButtons div'inin içeriğini tamamen değiştirin -->
+
+<div id="unitButtons">
+    <!-- Worker Butonu -->
+    <button id="produceWorker" class="unit-btn">
+        <img src="unit_worker_human.png" alt="Worker">
+        <div class="unit-info">
+            <span class="unit-name">Worker</span>
+            <span class="unit-cost">Wood: 10, Meat: 5, Fish: 3</span>
+        </div>
+    </button>
+
+    <!-- Pawn Butonu -->
+    <button id="producePawn" class="unit-btn">
+        <img src="unit_pawn_human.png" alt="Pawn">
+        <div class="unit-info">
+            <span class="unit-name">Pawn</span>
+            <span class="unit-cost">Wood: 25, Stone: 10</span>
+        </div>
+    </button>
+    
+    <!-- Rook Butonu -->
+    <button id="produceRook" class="unit-btn">
+        <img src="unit_rook_human.png" alt="Rook">
+        <div class="unit-info">
+            <span class="unit-name">Rook</span>
+            <span class="unit-cost">Stone: 400, Gold: 400</span>
+        </div>
+    </button>
+
+    <!-- Bishop Butonu -->
+    <button id="produceBishop" class="unit-btn">
+        <img src="unit_bishop_human.png" alt="Bishop">
+        <div class="unit-info">
+            <span class="unit-name">Bishop</span>
+            <span class="unit-cost">Wood: 800, Gold: 350, Fish: 60</span>
+        </div>
+    </button>
+
+    <!-- Knight Butonu -->
+    <button id="produceKnight" class="unit-btn">
+        <img src="unit_knight_human.png" alt="Knight">
+        <div class="unit-info">
+            <span class="unit-name">Knight</span>
+            <span class="unit-cost">Meat: 500, Stone: 300, Fish: 30</span>
+        </div>
+    </button>
+
+    <!-- Queen Butonu -->
+    <button id="produceQueen" class="unit-btn">
+        <img src="unit_queen_human.png" alt="Queen">
+        <div class="unit-info">
+            <span class="unit-name">Queen</span>
+            <span class="unit-cost">Wood: 3000, Meat: 1000, Gold: 1000, Stone: 1500, Fish: 120</span>
+        </div>
+    </button>
+</div>
             </div>
             
             <div id="actionPanel">
@@ -66,9 +128,12 @@
     <button id="showTutorial" class="action-btn">Game Tutorial</button>
     
     <!-- YENİ: "End Turn" butonu (eski Home butonunun ID'sini ve stilini kullanıyor) -->
-    <button id="endTurn" class="action-btn hometown-btn">End Turn</button>
+    <!--<button id="endTurn" class="action-btn hometown-btn">End Turn</button>-->
+    
+
 </div>
             
+
             <!--<div id="gameInfo">
                 <h3>Game Info</h3>
                 <p><strong>Objective:</strong> Defeat the enemy King!</p>

@@ -136,45 +136,65 @@ body {
     margin-bottom: 20px;
 }
 
+/* style.css dosyasındaki ilgili stilleri bulun ve değiştirin/ekleyin */
+
 #unitButtons {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 15px; /* Butonlar arasına daha fazla boşluk */
 }
 
-.unit-btn, .action-btn {
-    background: linear-gradient(135deg, #3498db, #2980b9);
+/* ESKİ .unit-btn STİLİNİ BUNUNLA DEĞİŞTİRİN */
+.unit-btn {
+    display: flex; /* İçerikleri yan yana dizmek için */
+    align-items: center; /* Dikey olarak ortala */
+    background: linear-gradient(135deg, #3a506b, #1c2541); /* Daha koyu bir tema */
     color: white;
-    border: none;
-    padding: 10px 15px;
-    border-radius: 5px;
+    border: 2px solid #5bc0be; /* Turkuaz bir çerçeve */
+    padding: 10px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 12px;
-    font-weight: bold;
     transition: all 0.3s ease;
     text-align: left;
 }
 
-.unit-btn:hover, .action-btn:hover {
-    background: linear-gradient(135deg, #2980b9, #1f618d);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+.unit-btn:hover {
+    border-color: #f39c12; /* Vurgu rengi */
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-.unit-btn:disabled, .action-btn:disabled {
-    background: #7f8c8d;
+.unit-btn:disabled {
+    background: #566573;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
+    opacity: 0.5;
 }
 
-.action-btn {
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
-    text-align: center;
+/* YENİ: Buton içindeki resim stili */
+.unit-btn img {
+    width: 40px;  /* 120x120 çok büyük olur, 40x40 daha uygun */
+    height: 40px;
+    margin-right: 10px;
+    border-radius: 5px;
+    background-color: rgba(0,0,0,0.2);
 }
 
-.action-btn:hover {
-    background: linear-gradient(135deg, #c0392b, #a93226);
+/* YENİ: Buton içindeki metin alanı stili */
+.unit-btn .unit-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.unit-btn .unit-name {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.unit-btn .unit-cost {
+    font-size: 12px;
+    color: #bdc3c7; /* Daha soluk bir renk */
 }
 
 /* Selected Unit Info */
@@ -565,4 +585,76 @@ body {
 
 #close-popup-btn:hover {
     background-color: #c0392b;
+}
+
+/* style.css dosyasında ilgili stilleri bulun ve değiştirin */
+
+/* End Turn Butonu Konteyneri */
+#end-turn-container {
+    /* Artık position: fixed veya absolute değil, normal bir div */
+    margin-bottom: 20px; /* Altındaki "Units" başlığıyla arasına boşluk koyar */
+}
+
+/* End Turn Butonunun Kendisi (Yeni Gradient ve Stil) */
+.end-turn-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* İçeriği ortala */
+    width: 100%; /* Panelin tamamını kaplasın */
+    
+    /* YENİ DİKKAT ÇEKİCİ GRADIENT */
+    background: linear-gradient(45deg, #28a745, #218838); /* Canlı Yeşil */
+    
+    color: white;
+    border: 2px solid #1e7e34; /* Koyu yeşil çerçeve */
+    border-radius: 12px; /* Daha belirgin yuvarlak kenarlar */
+    padding: 12px 20px;
+    font-family: Arial, sans-serif;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s ease-in-out;
+}
+
+.end-turn-btn:hover {
+    background: linear-gradient(45deg, #218838, #1e7e34);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+.end-turn-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+.end-turn-btn:disabled {
+    background: #5a6268;
+    border-color: #4e555b;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    opacity: 0.6;
+}
+
+/* Buton İçindeki İkon ve Metinler (ufak ayarlar) */
+.end-turn-btn .icon {
+    font-size: 22px;
+    margin-right: 12px;
+    line-height: 1;
+}
+
+.end-turn-btn .text {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.end-turn-btn .main-text {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.end-turn-btn .sub-text {
+    font-size: 12px;
+    opacity: 0.9;
 }
