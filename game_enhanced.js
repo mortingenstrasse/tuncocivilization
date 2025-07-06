@@ -668,7 +668,7 @@ Game.prototype.endTurn = function() {
 };
 
 // AI LOGIC
-Game.prototype.processAITurn = function() {
+/*Game.prototype.processAITurn = function() {
     if (this.gameState !== 'playing') return;
     
     console.log("AI is thinking...");
@@ -735,6 +735,136 @@ Game.prototype.processAITurn = function() {
     }
     
     this.endTurn();
+};
+*/
+// =======================================================================
+// EKSİKSİZ VE DÜZELTİLMİŞ YAPAY ZEKA MANTIĞI
+// =======================================================================
+Game.prototype.processAITurn = function() {
+    if (this.gameState !== 'playing') return;
+    
+    console.log("AI is thinking...");
+    const aiUnits = this.units.filter(u => u.owner === 'ai');
+    const humanUnits = this.units.filter(u => u.owner === 'human');
+
+    // 1. ÖNCE HAREKET ET, SONRA ÜRET
+    // Bu, yeni üretilen birimlerin aynı turda hareket etmeye çalışmasını engeller.
+
+    // Tüm AI birimleri için (asker ve işçi) hamle kararlarını ver
+    aiUnits.forEach(unit => {
+        if (unit.hasActed || unit.type === 'king') return; // Kral ve hamle yapmış birimler pas geçilir
+
+        const moves = unit.getPossibleMoves();
+        if (moves.length === 0) return; // Hareket edecek yer yoksa pas geç
+
+        // İşçiler sadece rastgele hareket eder
+        if (unit.type === 'worker') {
+            const moveOnly = moves.filter(m => m.type === 'move');
+            if (moveOnly.length > 0) {
+                const randomMove = moveOnly[Math.floor(Math.random() * moveOnly.length)];
+                unit.moveTo(randomMove.x, randomMove.y);
+            }
+            return; // İşçi hamlesini yaptı, devam etme.
+        }
+
+        // Askeri birimler için saldırı/yaklaşma mantığı
+        const attackMoves = moves.filter(m => m.type === 'attack');
+        
+        // ÖNCELİK 1: SALDIRI
+        if (attackMoves.length > 0) {
+            const randomAttack = attackMoves[Math.floor(Math.random() * attackMoves.length)];
+            const targetUnit = this.getUnitAt(randomAttack.x, randomAttack.y);
+            if (targetUnit) {
+                this.executeAttack(unit, targetUnit);
+            }
+            return; // Saldırı yapıldı, bu birim için işlem bitti.
+        }
+        
+        // ÖNCELİK 2: HAREKET ETME
+        // Saldıracak kimse yoksa, en yakın düşmana doğru hareket et.
+        if (humanUnits.length > 0) {
+            // En yakın düşmanı bul
+            let closestEnemy = null;
+            let minDistance = Infinity;
+
+            humanUnits.forEach(hu => {
+                const dist = Math.abs(hu.x - unit.x) + Math.abs(hu.y - unit.y);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    closestEnemy = hu;
+                }
+            });
+
+            if (!closestEnemy) return; // Düşman yoksa hareket etme.
+
+            // En yakın düşmana yaklaştıracak en iyi hamleyi bul
+            let bestMove = null;
+            let bestMoveDist = Infinity;
+
+            moves.forEach(move => {
+                const distToEnemy = Math.abs(move.x - closestEnemy.x) + Math.abs(move.y - closestEnemy.y);
+                if (distToEnemy < bestMoveDist) {
+                    bestMoveDist = distToEnemy;
+                    bestMove = move;
+                }
+            });
+
+            // LOOP ENGELLEME MANTIĞI:
+            // Eğer en iyi hamle bizi düşmana yaklaştırmıyorsa, rastgele bir hamle yap.
+            if (bestMove && bestMoveDist >= minDistance) {
+                const randomMove = moves[Math.floor(Math.random() * moves.length)];
+                unit.moveTo(randomMove.x, randomMove.y);
+                console.log(`AI ${unit.type} at (${unit.x},${unit.y}) was stuck, moving randomly.`);
+            } else if (bestMove) {
+                unit.moveTo(bestMove.x, bestMove.y);
+            }
+        }
+    });
+
+   /* // 2. ÜRETİM STRATEJİSİ (Hareketler bittikten sonra)
+    const currentAiUnits = this.units.filter(u => u.owner === 'ai'); // Güncel birim listesini al
+    const workerCount = currentAiUnits.filter(u => u.type === 'worker').length;
+    const pawnCount = currentAiUnits.filter(u => u.type === 'pawn').length;
+    // ... diğer birimlerin sayımı ...
+
+    if (workerCount < 5) { this.buildingSystem.produceUnit('worker', 'ai'); }
+    else if (pawnCount < 4) { this.buildingSystem.produceUnit('pawn', 'ai'); }
+    // ... diğer üretim else if'leri ...
+    
+    console.log("AI finished its turn.");
+    this.endTurn();
+    */
+   // 2. YENİ VE TIKANMAYAN ÜRETİM STRATEJİSİ
+    // ==========================================================
+    const workerCount = aiUnits.filter(u => u.type === 'worker').length;
+
+    // Öncelik 1: Her zaman yeterli işçi olduğundan emin ol
+    if (workerCount < 5) {
+        this.buildingSystem.produceUnit('worker', 'ai');
+    } 
+    // Öncelik 2: Yeterli işçi varsa, askeri birim üretmeyi düşün
+    else {
+        // Üretilebilecek birimlerin bir listesini oluştur (en güçlüden en zayıfa)
+        const possibleBuilds = ['queen', 'knight', 'rook', 'bishop', 'pawn'];
+        let builtSomething = false;
+
+        for (const unitType of possibleBuilds) {
+            // Eğer bu birimi üretecek kaynağı varsa, üret ve döngüden çık
+            if (this.buildingSystem.produceUnit(unitType, 'ai')) {
+                builtSomething = true;
+                break; 
+            }
+        }
+
+        // Eğer hiçbir askeri birim üretilemediyse ve işçi sayısı 10'dan azsa, bir işçi daha üret
+        if (!builtSomething && workerCount < 10) {
+            this.buildingSystem.produceUnit('worker', 'ai');
+        }
+    }
+    
+    console.log("AI finished its turn.");
+    this.endTurn();
+
 };
 
 // COMBAT SYSTEM
@@ -825,7 +955,7 @@ Game.prototype.generateTile = function(x, y) {
     if (waterNoise < -0.8) { // ESKİSİ: -0.5 -> YENİSİ: -0.8 (Çok daha nadir su)
         terrain = 'water'; 
         if (Math.random() > 0.7) { resource = 'fish'; amount = 1500; } 
-    } else if (noise > 0.8) { // ESKİSİ: 0.6 -> YENİSİ: 0.8 (Çok daha nadir dağ)
+    } else if (noise > 0.95) { // ESKİSİ: 0.6 -> YENİSİ: 0.8 (Çok daha nadir dağ)
         terrain = 'mountain'; 
         if (Math.random() > 0.6) { resource = 'stone'; amount = 2500; } 
     } else if (noise > 0.3) { 
@@ -941,8 +1071,12 @@ Game.prototype.drawMoveLog = function() {
         currentTime - msg.creationTime < messageLifetime
     );
 
-    const startY = this.canvas.height - 30; // Başlangıç Y pozisyonu (ekranın altı)
-    const lineHeight = 20;
+    //const startY = this.canvas.height - 30; // Başlangıç Y pozisyonu (ekranın altı)
+    //const lineHeight = 20;
+    // --- DEĞİŞİKLİK BURADA ---
+    const startX = 20; // Sol kenardan boşluk
+    const startY = 30; // Üst kenardan başlangıç pozisyonu
+    const lineHeight = 20; // Satır yüksekliği
 
     this.ctx.font = 'bold 12px Arial';
     this.ctx.textAlign = 'left';
@@ -961,7 +1095,10 @@ Game.prototype.drawMoveLog = function() {
         
         //this.ctx.fillText(msg.text, this.canvas.width - 20, startY - (index * lineHeight));
         // Yazıyı ekranın solundan 20 piksel içeride başlat
-        this.ctx.fillText(msg.text, 20, startY - (index * lineHeight));
+       // this.ctx.fillText(msg.text, 20, startY - (index * lineHeight));
+       // --- DEĞİŞİKLİK BURADA ---
+        // Yazıyı sol üstten başlayarak aşağı doğru sırala
+        this.ctx.fillText(msg.text, startX, startY + (index * lineHeight));
     });
 };
 
