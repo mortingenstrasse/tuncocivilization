@@ -87,21 +87,36 @@ class Unit {
 }
 
 // KING CLASS - FIXED POSITION, CANNOT MOVE
+// game.js dosyasındaki King sınıfını bulun ve güncelleyin
+
 class King extends Unit {
     constructor(x, y, owner, game) { 
         super(x, y, owner, 'king', game); 
-        this.isFixed = true; // King cannot move
+        // this.isFixed özelliğine artık ihtiyacımız yok, silebiliriz.
     }
     
-    // King cannot move - return empty array
+    // ==========================================================
+    // YENİ: KRAL'A 1 KARELİK HAREKET YETENEĞİ VERİYORUZ
+    // ==========================================================
     getPossibleMoves() {
-        return []; // King is fixed and cannot move
-    }
-    
-    // Override moveTo to prevent movement
-    moveTo(x, y) {
-        console.log("King cannot move - it's fixed in position!");
-        return false;
+        const moves = [];
+        // Etrafındaki 8 kareyi kontrol et
+        for (let i = -1; i <= 1; i++) {
+            for (let j = -1; j <= 1; j++) {
+                if (i === 0 && j === 0) continue; // Kendisi hariç
+                
+                const newX = this.x + i;
+                const newY = this.y + j;
+                
+                const targetInfo = this.game.getTileTargetInfo(newX, newY, this.owner);
+                
+                // Eğer hedef karo geçerliyse (harita içinde, yürünebilir ve kendi birimi değilse)
+                if (targetInfo.isValid) {
+                    moves.push({ x: newX, y: newY, type: targetInfo.type });
+                }
+            }
+        }
+        return moves;
     }
 }
 
@@ -1277,7 +1292,7 @@ Game.prototype.setupEvents = function() {
     });
     // "Game Tutorial" butonu showWelcomePopup fonksiyonunu çağırır.
     document.getElementById('showTutorial').addEventListener('click', () => this.showWelcomePopup());
-    
+
     document.getElementById('endTurn').addEventListener('click', () => this.endTurn());
 
     
@@ -1290,7 +1305,7 @@ Game.prototype.setupEvents = function() {
     document.getElementById('produceQueen').addEventListener('click', () => this.buildingSystem.produceUnit('queen', 'human'));
 };
 
-Game.prototype.handleTileClick = function(x, y) {
+/*Game.prototype.handleTileClick = function(x, y) {
     if (this.currentPlayer !== 'human' || this.gameState !== 'playing') return;
     
     const unitOnTile = this.getUnitAt(x, y);
@@ -1308,6 +1323,38 @@ Game.prototype.handleTileClick = function(x, y) {
                 this.selectUnit(unitOnTile); 
         }
     } else if (unitOnTile && unitOnTile.owner === 'human' && !unitOnTile.hasActed && unitOnTile.type !== 'king') { 
+        this.selectUnit(unitOnTile); 
+    }
+};
+*/
+// handleTileClick fonksiyonunu bulun ve bu daha basit versiyonla değiştirin
+
+Game.prototype.handleTileClick = function(x, y) {
+    if (this.currentPlayer !== 'human' || this.gameState !== 'playing') return;
+    
+    const unitOnTile = this.getUnitAt(x, y);
+
+    // Seçili birim varken bir hamle yapılıyor
+    if (this.selectedUnit) {
+        const move = this.possibleMoves.find(m => m.x === x && m.y === y);
+        if (move) { 
+            if (move.type === 'attack') {
+                this.executeAttack(this.selectedUnit, unitOnTile); 
+            } else {
+                this.selectedUnit.moveTo(x, y); 
+            }
+            this.deselectUnit(); 
+        } else { 
+            // Geçersiz bir hamle yapıldı, seçimi iptal et ve belki yeni birim seç
+            this.deselectUnit(); 
+            if (unitOnTile && unitOnTile.owner === 'human' && !unitOnTile.hasActed) {
+                this.selectUnit(unitOnTile); 
+            }
+        }
+    } 
+    // Hiçbir birim seçili değilken tıklanıyor
+    else if (unitOnTile && unitOnTile.owner === 'human' && !unitOnTile.hasActed) {
+        // Tıklanan birim hareket edebiliyorsa seç (artık Kral da dahil)
         this.selectUnit(unitOnTile); 
     }
 };
