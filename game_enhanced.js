@@ -69,7 +69,8 @@ class Tile {
 class Unit {
     constructor(x, y, owner, type, game) { 
         this.x = x; this.y = y; this.owner = owner; this.type = type; this.game = game; 
-        this.maxHealth = 100; this.health = 100; this.hasActed = false; 
+        //this.maxHealth = 100; this.health = 100; 
+        this.hasActed = false; 
     }
     resetTurn() { this.hasActed = false; }
     getPossibleMoves() { return []; }
@@ -82,7 +83,7 @@ class Unit {
         // YENİ: Hareketi günlüğe kaydet
         this.game.logMove(this, from, { x: x, y: y });
     }
-    takeDamage(amount) { this.health -= amount; return this.health <= 0; }
+    //takeDamage(amount) { this.health -= amount; return this.health <= 0; }
 }
 
 // KING CLASS - FIXED POSITION, CANNOT MOVE
@@ -402,6 +403,8 @@ function Game() {
     this.aiResources = new ResourceManager();
     this.buildingSystem = new BuildingSystem(this);
     this.gameState = 'playing'; // 'playing', 'human_won', 'ai_won'
+    // YENİ: Zorluk seviyesi değişkeni
+    this.difficulty = 'easy'; // Varsayılan değer
     // MÜZİK İÇİN YENİ DEĞİŞKENLER
     this.musicPlaylist = ['GameMusic2.mp3', 'GameMusic3.mp3', 'GameMusic4.mp3'];
     this.currentTrackIndex = 0;
@@ -415,6 +418,14 @@ function Game() {
 
 // GAME INITIALIZATION
 Game.prototype.init = function() {
+    // YENİ: URL'den zorluk seviyesini oku
+    const urlParams = new URLSearchParams(window.location.search);
+    const difficultyParam = urlParams.get('difficulty');
+    if (['easy', 'hard', 'pro'].includes(difficultyParam)) {
+        this.difficulty = difficultyParam;
+    }
+    console.log(`Game starting with difficulty: ${this.difficulty}`);
+    // BİTTİ
     this.loadAllImages();
     this.imageManager.onAllLoaded = () => {
         this.imagesLoaded = true; 
@@ -868,7 +879,7 @@ Game.prototype.processAITurn = function() {
 };
 
 // COMBAT SYSTEM
-Game.prototype.executeAttack = function(attacker, defender) { 
+/*Game.prototype.executeAttack = function(attacker, defender) { 
     console.log(`${attacker.owner} ${attacker.type} attacks ${defender.owner} ${defender.type}`); 
     const defenderDestroyed = defender.takeDamage(50); 
     if (defenderDestroyed) {
@@ -880,6 +891,36 @@ Game.prototype.executeAttack = function(attacker, defender) {
         }
     }
     attacker.hasActed = true; 
+};
+*/
+// =======================================================================
+// YENİ SATRANÇ SAVAŞ SİSTEMİ
+// =======================================================================
+Game.prototype.executeAttack = function(attacker, defender) {
+    // 1. Saldırı mesajını oluştur
+    const attackerName = `${attacker.owner === 'human' ? 'Your' : 'Enemy'} ${attacker.type}`;
+    const defenderName = `${defender.owner === 'human' ? 'your' : "enemy's"} ${defender.type}`;
+    const message = `${attackerName} captures ${defenderName}!`;
+
+    // 1. SES EFEKTİNİ ÇAL
+    this.playSoundEffect('effect1.mp3');
+    
+    // Mesajın rengini belirle
+    const color = attacker.owner === 'human' ? 'rgba(46, 204, 113, 0.9)' : 'rgba(231, 76, 60, 0.9)';
+    
+    // Hamle günlüğüne özel saldırı mesajını gönder
+    this.logSpecialMessage(message, color);
+
+    // 2. Savunan birimi oyundan kaldır
+    this.units = this.units.filter(u => u !== defender);
+    
+    // 3. Saldıran birimi, alınan taşın yerine taşı
+    attacker.moveTo(defender.x, defender.y);
+
+    // 4. Kazanma koşulunu kontrol et (eğer bir kral alındıysa)
+    if (defender.type === 'king') {
+        setTimeout(() => this.checkWinCondition(), 100);
+    }
 };
 
 // Continue with the rest of the original functions...
@@ -991,6 +1032,32 @@ Game.prototype.createUnits = function() {
     this.units.push(new Worker(hx + 1, hy - 1, 'human', this));
     this.units.push(new Worker(ax - 1, ay + 1, 'ai', this));
     this.units.push(new Worker(ax + 1, ay + 1, 'ai', this));
+// ==========================================================
+    // YENİ: ZORLUK SEVİYESİNE GÖRE AI'A BONUS BİRİMLER VER
+    // ==========================================================
+    let bonusUnits = {};
+    if (this.difficulty === 'hard') {
+        bonusUnits = { bishop: 2, rook: 2, knight: 2, queen: 1 };
+    } else if (this.difficulty === 'pro') {
+        bonusUnits = { bishop: 6, rook: 6, knight: 6, queen: 4 };
+    }
+    
+    // Bonus birimleri kralın etrafına yerleştir
+    Object.keys(bonusUnits).forEach(unitType => {
+        for (let i = 0; i < bonusUnits[unitType]; i++) {
+            const spawnLoc = this.buildingSystem.findSpawnLocation(ax, ay);
+            if (spawnLoc) {
+                let newUnit;
+                switch (unitType) {
+                    case 'bishop': newUnit = new Bishop(spawnLoc.x, spawnLoc.y, 'ai', this); break;
+                    case 'rook': newUnit = new Rook(spawnLoc.x, spawnLoc.y, 'ai', this); break;
+                    case 'knight': newUnit = new Knight(spawnLoc.x, spawnLoc.y, 'ai', this); break;
+                    case 'queen': newUnit = new Queen(spawnLoc.x, spawnLoc.y, 'ai', this); break;
+                }
+                if (newUnit) this.units.push(newUnit);
+            }
+        }
+    });
 };
 
 // Continue with render and other functions from the original code...
@@ -1148,30 +1215,40 @@ Game.prototype.drawIsometricTileOutline = function(x,y,w,h) {
 // YENİ BÖLÜM: HAMLE GÜNLÜĞÜ SİSTEMİ
 // =======================================================================
 
+// logMove fonksiyonunu bulun ve güncelleyin
 Game.prototype.logMove = function(unit, from, to) {
     const fromName = this.getTileName(from.x, from.y);
     const toName = this.getTileName(to.x, to.y);
-    
-    // Mesajın metnini oluştur
     const text = `${unit.type.charAt(0).toUpperCase() + unit.type.slice(1)} ${fromName} -> ${toName}`;
-    
-    // Mesajın rengini sahibine göre belirle
-    const color = unit.owner === 'human' ? 'rgba(46, 204, 113, 0.9)' : 'rgba(231, 76, 60, 0.9)'; // Yeşil veya Kırmızı
-    
+    const color = unit.owner === 'human' ? 'rgba(46, 204, 113, 0.9)' : 'rgba(231, 76, 60, 0.9)';
+    this.logSpecialMessage(text, color); // Artık bu da özel mesaj fonksiyonunu kullanıyor
+};
+
+// YENİ: Özel metinleri günlüğe ekleyen fonksiyon
+Game.prototype.logSpecialMessage = function(text, color) {
     const message = {
         text: text,
         color: color,
         creationTime: Date.now()
     };
-
-    // Mesajı listeye ekle
     this.moveLogMessages.push(message);
-
-    // Listeyi en fazla 5 mesajla sınırla (isteğe bağlı)
     if (this.moveLogMessages.length > 5) {
-        this.moveLogMessages.shift(); // En eski mesajı sil
+        this.moveLogMessages.shift();
     }
 };
+
+// =======================================================================
+// YENİ SES EFEKTİ FONKSİYONU
+// =======================================================================
+Game.prototype.playSoundEffect = function(soundFile) {
+    // Her seferinde yeni bir Audio nesnesi oluşturmak,
+    // seslerin üst üste binmesine ve kesilmeden çalmasına olanak tanır.
+    const audio = new Audio(soundFile);
+    audio.volume = 0.5; // Ses seviyesini ayarla (0.0 ile 1.0 arası)
+    audio.play().catch(e => console.error("Sound effect failed to play:", e));
+};
+
+// drawMoveLog fonksiyonu aynı kalabilir, bir değişiklik gerekmez.
 
 Game.prototype.setupEvents = function() {
     document.addEventListener('keydown', (e) => { 
@@ -1198,8 +1275,11 @@ Game.prototype.setupEvents = function() {
     this.canvas.addEventListener('click', (e) => { 
         if (this.hoveredTile) this.handleTileClick(this.hoveredTile.x, this.hoveredTile.y); 
     });
+    // "Game Tutorial" butonu showWelcomePopup fonksiyonunu çağırır.
+    document.getElementById('showTutorial').addEventListener('click', () => this.showWelcomePopup());
     
     document.getElementById('endTurn').addEventListener('click', () => this.endTurn());
+
     
     // Unit production buttons
     document.getElementById('produceWorker').addEventListener('click', () => this.buildingSystem.produceUnit('worker', 'human'));

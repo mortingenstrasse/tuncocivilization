@@ -86,7 +86,11 @@
 </head>
 <body>
 
-    <!-- GİRİŞ EKRANI (Başlangıçta görünür) -->
+    <video autoplay muted loop id="background-video">
+        <source src="background.mp4" type="video/mp4">
+    </video>
+
+    <!-- GİRİŞ EKRANI -->
     <div id="enter-screen" class="menu-container">
         <div>
             <h2>Welcome</h2>
@@ -97,18 +101,24 @@
 
     <!-- ANA MENÜ (Başlangıçta gizli) -->
     <div id="main-menu" class="menu-container hidden">
-        <div class="video-window">
-            <video muted loop id="main-video"> <!-- `autoplay` kaldırıldı, JS ile başlatılacak -->
-                <source src="background.mp4" type="video/mp4">
-            </video>
-        </div>
-
         <h1><strong>Tunç Alıcıoğlu's</strong><br>Civilization 1.0</h1>
         <ul class="menu-options">
-            <li><a href="game.html" class="menu-button">Single Game</a></li>
+            <li><a href="game.html" class="menu-button" id="startGameBtn">Single Game</a></li>
             <li><button class="menu-button disabled">Multiplayer (Soon)</button></li>
-            <li><button class="menu-button disabled">Options (Soon)</button></li>
+            <li><button id="optionsBtn" class="menu-button">Options</button></li>
         </ul>
+    </div>
+
+    <!-- YENİ: SEÇENEKLER MENÜSÜ (Başlangıçta gizli) -->
+    <div id="options-menu" class="menu-container hidden">
+        <h1>Options</h1>
+        <h3>Select Difficulty</h3>
+        <ul class="menu-options">
+            <li><button class="menu-button difficulty-btn" data-difficulty="easy">Easy</button></li>
+            <li><button class="menu-button difficulty-btn" data-difficulty="hard">Hard</button></li>
+            <li><button class="menu-button difficulty-btn" data-difficulty="pro">Professional</button></li>
+        </ul>
+        <button id="backBtn" class="menu-button" style="margin-top: 30px; border-color: #e74c3c;">Back</button>
     </div>
     
     <audio id="mainMenuMusic" loop>
@@ -119,26 +129,51 @@
         const enterButton = document.getElementById('enter-button');
         const enterScreen = document.getElementById('enter-screen');
         const mainMenu = document.getElementById('main-menu');
+        const optionsMenu = document.getElementById('options-menu');
         const music = document.getElementById('mainMenuMusic');
-        const video = document.getElementById('main-video');
+        const video = document.getElementById('main-video'); // Eğer video id'niz buysa
 
+        // Ana Menü Butonları
+        const startGameBtn = document.getElementById('startGameBtn');
+        const optionsBtn = document.getElementById('optionsBtn');
+        const backBtn = document.getElementById('backBtn');
+        
         enterButton.addEventListener('click', () => {
-            // Medyaları başlatmayı dene (video ve müzik)
-            // Tarayıcılar genellikle aynı anda birden fazla medya oynatımına izin verir
-            // eğer kullanıcı etkileşimiyle tetiklenmişse.
-            const musicPromise = music.play();
-            const videoPromise = video.play();
-
-            if (musicPromise !== undefined) {
-                musicPromise.catch(error => console.error("Music play failed:", error));
-            }
-            if (videoPromise !== undefined) {
-                videoPromise.catch(error => console.error("Video play failed:", error));
-            }
-            
-            // Ekranları değiştir (geçiş efektiyle)
+            music.play().catch(error => console.error("Music play failed:", error));
+            // video.play().catch(error => console.error("Video play failed:", error));
             enterScreen.classList.add('hidden');
             mainMenu.classList.remove('hidden');
+        });
+
+        // Menüler arası geçiş
+        optionsBtn.addEventListener('click', () => {
+            mainMenu.classList.add('hidden');
+            optionsMenu.classList.remove('hidden');
+        });
+
+        backBtn.addEventListener('click', () => {
+            optionsMenu.classList.add('hidden');
+            mainMenu.classList.remove('hidden');
+        });
+
+        // Zorluk seviyesini saklama
+        document.querySelectorAll('.difficulty-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const difficulty = button.getAttribute('data-difficulty');
+                // Seçimi tarayıcının hafızasında sakla (localStorage)
+                localStorage.setItem('gameDifficulty', difficulty);
+                alert(`Difficulty set to: ${difficulty.toUpperCase()}`);
+                // Geri dön
+                optionsMenu.classList.add('hidden');
+                mainMenu.classList.remove('hidden');
+            });
+        });
+
+        // Oyunu başlatırken zorluk seviyesini URL'e ekle
+        startGameBtn.addEventListener('click', (e) => {
+            e.preventDefault(); // Normal link davranışını engelle
+            const difficulty = localStorage.getItem('gameDifficulty') || 'easy'; // Varsayılan: easy
+            window.location.href = `game.html?difficulty=${difficulty}`;
         });
     </script>
 
