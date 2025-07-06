@@ -12,6 +12,46 @@ class ImageManager {
     getImage(name) { return this.images[name]; }
 }
 
+// =======================================================================
+// YENİ BÖLÜM: HAVA DURUMU EFEKTLERİ
+// =======================================================================
+class Snowflake {
+    constructor(canvasWidth, canvasHeight) {
+        this.canvasWidth = canvasWidth;
+        this.canvasHeight = canvasHeight;
+        this.reset();
+    }
+
+    // Kar tanesini sıfırla (ekranın üstünde yeni bir pozisyona koy)
+    reset() {
+        this.x = Math.random() * this.canvasWidth;
+        this.y = Math.random() * -this.canvasHeight; // Ekranın üstünden başlasın
+        this.radius = Math.random() * 2 + 1; // 1 ile 3 piksel arası boyut
+        this.speedY = Math.random() * 1 + 0.5; // Düşme hızı
+        this.speedX = Math.random() * 2 - 1; // Hafif sağa/sola salınım
+        this.opacity = Math.random() * 0.5 + 0.3; // Yarı saydamlık
+    }
+
+    // Kar tanesini güncelle (her karede pozisyonunu değiştir)
+    update() {
+        this.y += this.speedY;
+        this.x += this.speedX;
+
+        // Ekranın altından çıkarsa, başa sar
+        if (this.y > this.canvasHeight) {
+            this.reset();
+        }
+    }
+
+    // Kar tanesini çiz
+    draw(ctx) {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+        ctx.fill();
+    }
+}
+
 window.addEventListener('load', () => { game = new Game(); game.init(); });
 
 // =======================================================================
@@ -33,7 +73,15 @@ class Unit {
     }
     resetTurn() { this.hasActed = false; }
     getPossibleMoves() { return []; }
-    moveTo(x, y) { this.x = x; this.y = y; this.hasActed = true; }
+    moveTo(x, y) {
+        const from = { x: this.x, y: this.y }; // Eski pozisyonu kaydet
+        this.x = x;
+        this.y = y;
+        this.hasActed = true;
+        
+        // YENİ: Hareketi günlüğe kaydet
+        this.game.logMove(this, from, { x: x, y: y });
+    }
     takeDamage(amount) { this.health -= amount; return this.health <= 0; }
 }
 
@@ -146,6 +194,32 @@ class Bishop extends Unit {
         return moves;
     }
 }
+/*class Bishop extends Unit {
+    constructor(x, y, owner, game) {
+        super(x, y, owner, 'bishop', game);
+    }
+
+    getPossibleMoves() {
+        const moves = [];
+        const directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]]; // Çapraz yönler
+
+        for (const [dx, dy] of directions) {
+            for (let i = 1; i < Math.max(this.game.mapWidth, this.game.mapHeight); i++) {
+                const newX = this.x + dx * i;
+                const newY = this.y + dy * i;
+                
+                const targetInfo = this.game.getTileTargetInfo(newX, newY, this.owner);
+                
+                if (!targetInfo.isValid) break;
+                
+                moves.push({ x: newX, y: newY, type: targetInfo.type });
+                
+                if (targetInfo.type === 'attack') break;
+            }
+        }
+        return moves;
+    }
+}*/
 
 class Knight extends Unit {
     constructor(x, y, owner, game) { super(x, y, owner, 'knight', game); }
@@ -222,12 +296,12 @@ class BuildingSystem {
     constructor(game) {
         this.game = game;
         this.unitCosts = {
-            worker: { wood: 10 },
-            pawn: { wood: 15, stone: 5 },
-            rook: { stone: 20, gold: 10 },
-            bishop: { wood: 15, gold: 15 },
-            knight: { meat: 20, stone: 10 },
-            queen: { wood: 30, meat: 20, gold: 25, stone: 15 }
+            worker: { wood: 10, meat: 5 },
+            pawn: { wood: 25, stone: 10 },
+            rook: { stone: 400, gold: 400 },
+            bishop: { wood: 800, gold: 350 },
+            knight: { meat: 500, stone: 300 },
+            queen: { wood: 3000, meat: 1000, gold: 1000, stone: 1500 }
         };
     }
     
@@ -332,6 +406,11 @@ function Game() {
     this.musicPlaylist = ['GameMusic2.mp3', 'GameMusic3.mp3', 'GameMusic4.mp3'];
     this.currentTrackIndex = 0;
     this.audioElement = new Audio();
+    // YENİ: Kar efekti için
+    this.snowflakes = [];
+    this.isSnowing = true; // Kar yağışını açıp kapatmak için
+    // YENİ: Hamle günlüğü için mesaj listesi
+    this.moveLogMessages = [];
 }
 
 // GAME INITIALIZATION
@@ -347,7 +426,60 @@ Game.prototype.init = function() {
         this.initMusicPlayer();
         this.gameLoop(); 
         this.updateUI();
+        // YENİ: Kar yağışını başlat
+        this.createSnowfall();
+         // YENİ: Oyun yüklendiğinde pop-up'ı göster
+        this.showWelcomePopup();
     };
+};
+
+// =======================================================================
+// YENİ BÖLÜM: BAŞLANGIÇ BİLGİLENDİRME POP-UP'I
+// =======================================================================
+Game.prototype.showWelcomePopup = function() {
+    // Eğer pop-up zaten varsa, tekrar oluşturma
+    if (document.getElementById('info-popup-overlay')) return;
+
+    // Ana arkaplan div'ini oluştur
+    const overlay = document.createElement('div');
+    overlay.id = 'info-popup-overlay';
+
+    // İçerik kutusunu oluştur
+    const box = document.createElement('div');
+    box.id = 'info-popup-box';
+
+    box.innerHTML = `
+        <h2>Welcome to this world!</h2>
+        <p>Your goal is to build an army and defeat the enemy <strong>King</strong>!</p>
+        
+        <h4>Controls & Gameplay:</h4>
+        <ul>
+            <li>- Use <strong>WASD</strong> keys to move the camera around the map.</li>
+            <li>- Produce <strong>Workers</strong> to gather resources automatically each turn.</li>
+            <li>- Use your resources to build a powerful army based on <strong>chess pieces</strong>.</li>
+            <li>- Click the <strong>End Turn</strong> button to finish your turn and let the AI play.</li>
+        </ul>
+
+        <h4>Unit Movements:</h4>
+        <ul>
+            <li><strong>Pawn:</strong> Moves one step forward, attacks diagonally.</li>
+            <li><strong>Rook:</strong> Moves in straight lines, horizontally or vertically.</li>
+            <li><strong>Bishop:</strong> Moves in diagonal lines.</li>
+            <li><strong>Knight:</strong> Moves in an "L" shape (2+1 squares) and can jump over units.</li>
+            <li><strong>Queen:</strong> The most powerful piece, combines Rook and Bishop movements.</li>
+            <li><strong>King:</strong> Your main base. It cannot move. If it's destroyed, you lose!</li>
+        </ul>
+
+        <button id="close-popup-btn">Got It, Let's Play!</button>
+    `;
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    // Kapatma butonuna tıklama olayını ekle
+    document.getElementById('close-popup-btn').addEventListener('click', () => {
+        document.body.removeChild(overlay);
+    });
 };
 
 // YENİ FONKSİYON: Müzik Çaları Başlatma
@@ -645,9 +777,10 @@ Game.prototype.generateMap = function() {
         Array.from({ length: this.mapHeight }, (_, y) => this.generateTile(x, y)));
 };
 
-Game.prototype.generateTile = function(x, y) {
+/*Game.prototype.generateTile = function(x, y) {
     const name = this.getTileName(x, y);
-    const noise = this.simpleNoise(x * 0.1, y * 0.1);
+    //const noise = this.simpleNoise(x * 0.1, y * 0.1);
+    const noise = this.simpleNoise(x * 0.04, y * 0.04);
     const waterNoise = this.simpleNoise(x * 0.05, y * 0.05);
     let terrain = 'grass', resource = null, amount = 0;
     
@@ -665,6 +798,45 @@ Game.prototype.generateTile = function(x, y) {
     } else if (noise < -0.2) {
         terrain = 'swamp';
         if (Math.random() > 0.8) { resource = 'fish'; amount = 600; }
+    }
+    
+    return new Tile(x, y, name, terrain, resource, amount);
+};*/
+// =======================================================================
+// MİNİMAL HARİTA ÜRETİM DÜZELTMESİ
+// =======================================================================
+
+// =======================================================================
+// MİNİMAL HARİTA ÜRETİM DÜZELTMESİ - DAHA AZ SU VE DAĞ
+// =======================================================================
+
+Game.prototype.generateTile = function(x, y) {
+    const name = this.getTileName(x, y);
+
+    const noise = this.simpleNoise(x * 0.04, y * 0.04);
+    const waterNoise = noise; 
+
+    let terrain = 'grass', resource = null, amount = 0;
+    
+    // --- DEĞİŞİKLİK BURADA ---
+    // Su ve Dağ eşiklerini daha zorlu hale getiriyoruz.
+    // -1'e daha yakın ve +1'e daha yakın değerler seçiyoruz.
+
+    if (waterNoise < -0.8) { // ESKİSİ: -0.5 -> YENİSİ: -0.8 (Çok daha nadir su)
+        terrain = 'water'; 
+        if (Math.random() > 0.7) { resource = 'fish'; amount = 1500; } 
+    } else if (noise > 0.8) { // ESKİSİ: 0.6 -> YENİSİ: 0.8 (Çok daha nadir dağ)
+        terrain = 'mountain'; 
+        if (Math.random() > 0.6) { resource = 'stone'; amount = 2500; } 
+    } else if (noise > 0.3) { 
+        terrain = 'forest'; 
+        if (Math.random() > 0.5) { resource = 'wood'; amount = 1000; } 
+    } else if (noise > 0.0) {
+        terrain = 'plains';
+        if (Math.random() > 0.7) { resource = 'grain'; amount = 800; }
+    } else if (noise < -0.3) {
+        terrain = 'swamp';
+        if (Math.random() > 0.8) { resource = 'meat'; amount = 600; }
     }
     
     return new Tile(x, y, name, terrain, resource, amount);
@@ -750,6 +922,69 @@ Game.prototype.render = function() {
         this.ctx.lineWidth = 2; 
         this.drawIsometricTileOutline(screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height); 
     }
+    // ==========================================================
+    // YENİ: Kar Efektini En Üste Çiz
+    // ==========================================================
+    this.updateAndDrawSnow();
+
+    // YENİ: Hamle günlüğü mesajlarını çiz
+    this.drawMoveLog();
+};
+
+Game.prototype.drawMoveLog = function() {
+    const currentTime = Date.now();
+    const messageLifetime = 3000; // Mesajın ekranda kalma süresi (3 saniye)
+    const fadeDuration = 500; // Solma animasyonu süresi (0.5 saniye)
+    
+    // Aktif mesajları filtrele
+    this.moveLogMessages = this.moveLogMessages.filter(msg => 
+        currentTime - msg.creationTime < messageLifetime
+    );
+
+    const startY = this.canvas.height - 30; // Başlangıç Y pozisyonu (ekranın altı)
+    const lineHeight = 20;
+
+    this.ctx.font = 'bold 12px Arial';
+    this.ctx.textAlign = 'left';
+
+    this.moveLogMessages.forEach((msg, index) => {
+        const age = currentTime - msg.creationTime;
+        let opacity = 1.0;
+
+        // Mesajın son anlarında solma efekti uygula
+        if (age > messageLifetime - fadeDuration) {
+            opacity = 1.0 - (age - (messageLifetime - fadeDuration)) / fadeDuration;
+        }
+
+        const [r, g, b] = msg.color.match(/\d+/g); // Renk bileşenlerini al
+        this.ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+        
+        //this.ctx.fillText(msg.text, this.canvas.width - 20, startY - (index * lineHeight));
+        // Yazıyı ekranın solundan 20 piksel içeride başlat
+        this.ctx.fillText(msg.text, 20, startY - (index * lineHeight));
+    });
+};
+
+// --- YENİ KAR YAĞIŞI FONKSİYONLARI ---
+
+// Belirlenen sayıda kar tanesi oluşturur
+Game.prototype.createSnowfall = function(count = 150) {
+    if (!this.isSnowing) return;
+    this.snowflakes = [];
+    for (let i = 0; i < count; i++) {
+        this.snowflakes.push(new Snowflake(this.canvas.width, this.canvas.height));
+    }
+};
+
+// Kar tanelerinin pozisyonlarını günceller ve çizer
+// Bu, ana render fonksiyonu içinde çağrılacak
+Game.prototype.updateAndDrawSnow = function() {
+    if (!this.isSnowing) return;
+    
+    this.snowflakes.forEach(snowflake => {
+        snowflake.update();
+        snowflake.draw(this.ctx);
+    });
 };
 
 Game.prototype.drawIsometricTile = function(x,y,w,h) { 
@@ -770,6 +1005,35 @@ Game.prototype.drawIsometricTileOutline = function(x,y,w,h) {
     this.ctx.lineTo(x, y + h / 2); 
     this.ctx.closePath(); 
     this.ctx.stroke(); 
+};
+
+// =======================================================================
+// YENİ BÖLÜM: HAMLE GÜNLÜĞÜ SİSTEMİ
+// =======================================================================
+
+Game.prototype.logMove = function(unit, from, to) {
+    const fromName = this.getTileName(from.x, from.y);
+    const toName = this.getTileName(to.x, to.y);
+    
+    // Mesajın metnini oluştur
+    const text = `${unit.type.charAt(0).toUpperCase() + unit.type.slice(1)} ${fromName} -> ${toName}`;
+    
+    // Mesajın rengini sahibine göre belirle
+    const color = unit.owner === 'human' ? 'rgba(46, 204, 113, 0.9)' : 'rgba(231, 76, 60, 0.9)'; // Yeşil veya Kırmızı
+    
+    const message = {
+        text: text,
+        color: color,
+        creationTime: Date.now()
+    };
+
+    // Mesajı listeye ekle
+    this.moveLogMessages.push(message);
+
+    // Listeyi en fazla 5 mesajla sınırla (isteğe bağlı)
+    if (this.moveLogMessages.length > 5) {
+        this.moveLogMessages.shift(); // En eski mesajı sil
+    }
 };
 
 Game.prototype.setupEvents = function() {
