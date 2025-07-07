@@ -66,6 +66,72 @@ class Tile {
     hasResource() { return this.resourceType && this.resourceAmount > 0; }
 }
 
+// BÖLÜM 1: DÜNYA VE HARİTA SINIFLARI
+
+// ... Tile sınıfı ...
+
+// =======================================================================
+// YENİ BÖLÜM: SAVAŞ SİSİ (FOG OF WAR)
+// =======================================================================
+class FogOfWar {
+    constructor(width, height) {
+        this.width = width;
+        this.height = height;
+        // 0: Unexplored, 1: Explored (in fog), 2: Visible
+        this.grid = Array.from({ length: width }, () => Array(height).fill(0));
+    }
+
+    // Belirli bir karonun durumunu döndürür
+    getState(x, y) {
+        if (x < 0 || x >= this.width || y < 0 || y >= this.height) return 0;
+        return this.grid[x][y];
+    }
+
+    // Birimlerin etrafındaki görüş alanını günceller
+    update(units) {
+        // 1. Önce her yeri sise geri döndür (görünmez yap)
+        for (let x = 0; x < this.width; x++) {
+            for (let y = 0; y < this.height; y++) {
+                if (this.grid[x][y] === 2) this.grid[x][y] = 1;
+            }
+        }
+
+        // 2. Her birimin etrafını görünür yap
+        const visionRadius = 6; // Birimlerin ne kadar uzağı görebileceği (12 kare değil, 6 daha dengeli)
+        units.forEach(unit => {
+            // Sadece oyuncunun birimleri görüş sağlar
+            if (unit.owner === 'human') {
+                for (let dx = -visionRadius; dx <= visionRadius; dx++) {
+                    for (let dy = -visionRadius; dy <= visionRadius; dy++) {
+                        if (Math.sqrt(dx*dx + dy*dy) <= visionRadius) {
+                            const x = unit.x + dx;
+                            const y = unit.y + dy;
+                            if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+                                this.grid[x][y] = 2; // Görünür yap
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Başlangıçta belirli bir alanı keşfedilmiş olarak işaretler
+    exploreArea(centerX, centerY, radius) {
+        for (let dx = -radius; dx <= radius; dx++) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                 if (Math.sqrt(dx*dx + dy*dy) <= radius) {
+                    const x = centerX + dx;
+                    const y = centerY + dy;
+                    if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+                        if (this.grid[x][y] === 0) this.grid[x][y] = 1; // Sadece keşfedilmemişleri sise al
+                    }
+                }
+            }
+        }
+    }
+}
+
 class Unit {
     constructor(x, y, owner, type, game) { 
         this.x = x; this.y = y; this.owner = owner; this.type = type; this.game = game; 
@@ -82,9 +148,16 @@ class Unit {
         
         // YENİ: Hareketi günlüğe kaydet
         this.game.logMove(this, from, { x: x, y: y });
+           // YENİ: Birim hareket ettiğinde sisi güncelle
+        if (this.owner === 'human') {
+            this.game.fogOfWar.update(this.game.units, 'human');
+        }
     }
+    // ...
     //takeDamage(amount) { this.health -= amount; return this.health <= 0; }
 }
+
+
 
 // KING CLASS - FIXED POSITION, CANNOT MOVE
 // game.js dosyasındaki King sınıfını bulun ve güncelleyin
@@ -447,6 +520,7 @@ function Game() {
     this.maxZoom = 1.5;   // En fazla ne kadar yakınlaşabilir (%150)
     this.baseTileSize = { width: 64, height: 32 }; // Orijinal karo boyutunu sakla
     // ==========================================================
+    this.fogOfWar = new FogOfWar(this.mapWidth, this.mapHeight);
 }
 
 // GAME INITIALIZATION
@@ -785,6 +859,9 @@ Game.prototype.endTurn = function() {
         this.currentPlayer = 'human';
         this.turn++;
         this.units.forEach(u => u.resetTurn());
+        // YENİ: Sıra oyuncuya geçtiğinde sisi güncelle
+        this.fogOfWar.update(this.units);
+
         this.updateUI();
         console.log(`Turn ${this.turn}: Your Turn`);
     }
@@ -1069,7 +1146,8 @@ Game.prototype.loadAllImages = function() {
     im.loadImage('knight_human', 'unit_knight_human.png');
     im.loadImage('knight_ai', 'unit_knight_ai.png');
     im.loadImage('queen_human', 'unit_queen_human.png');
-    im.loadImage('queen_ai', 'unit_queen_ai.png');
+    im.loadImage('queen_ai', 'unit_queen_ai.png');// YENİ: Sandık resimlerini yükle
+    
 };
 
 Game.prototype.generateMap = function() {
@@ -1241,6 +1319,9 @@ Game.prototype.createUnits = function() {
     // Create Kings (fixed position)
     this.units.push(new King(hx, hy, 'human', this));
     this.units.push(new King(ax, ay, 'ai', this));
+
+     // YENİ: Oyun başında AI kralının etrafını keşfet
+    this.fogOfWar.exploreArea(ax, ay, 4); // 4 karelik bir yarıçapta
     
     // Create initial workers
     this.units.push(new Worker(hx - 1, hy - 1, 'human', this));
@@ -1278,8 +1359,9 @@ Game.prototype.createUnits = function() {
 // Continue with render and other functions from the original code...
 Game.prototype.render = function() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.ctx.fillStyle = '#2c3e50'; 
+    this.ctx.fillStyle = '#000000'; 
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
     
     if (!this.imagesLoaded) { 
         this.ctx.fillStyle = '#ffffff'; 
@@ -1288,6 +1370,7 @@ Game.prototype.render = function() {
         this.ctx.fillText('Loading Assets...', this.canvas.width / 2, this.canvas.height / 2); 
         return; 
     }
+    
     
     // Render tiles
     for (let y = 0; y < this.mapHeight; y++) { 
@@ -1334,6 +1417,7 @@ Game.prototype.render = function() {
         this.ctx.lineWidth = 2; 
         this.drawIsometricTileOutline(screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height); 
     }
+    
     // ==========================================================
     // YENİ: Kar Efektini En Üste Çiz
     // ==========================================================
@@ -1341,6 +1425,7 @@ Game.prototype.render = function() {
 
     // YENİ: Hamle günlüğü mesajlarını çiz
     this.drawMoveLog();
+    
 };
 
 Game.prototype.drawMoveLog = function() {
@@ -1425,6 +1510,8 @@ Game.prototype.drawIsometricTileOutline = function(x,y,w,h) {
     this.ctx.closePath(); 
     this.ctx.stroke(); 
 };
+
+
 
 // =======================================================================
 // YENİ BÖLÜM: HAMLE GÜNLÜĞÜ SİSTEMİ
