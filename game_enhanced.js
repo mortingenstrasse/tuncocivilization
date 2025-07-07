@@ -867,7 +867,7 @@ Game.prototype.processAITurn = function() {
 
     // Tüm AI birimleri için (asker ve işçi) hamle kararlarını ver
     aiUnits.forEach(unit => {
-        if (unit.hasActed || unit.type === 'king') return; // Kral ve hamle yapmış birimler pas geçilir
+        if (unit.hasActed) return;
 
         const moves = unit.getPossibleMoves();
         if (moves.length === 0) return; // Hareket edecek yer yoksa pas geç
@@ -881,6 +881,23 @@ Game.prototype.processAITurn = function() {
             }
             return; // İşçi hamlesini yaptı, devam etme.
         }
+           // ==========================================================
+        // YENİ: KRAL İÇİN ÖZEL HAREKET MANTIĞI
+        // ==========================================================
+        if (unit.type === 'king') {
+            // Kral sadece tehlikedeyse veya sıkıştıysa hareket etsin.
+            // Şimdilik basit bir "eğer hareket edebileceği bir yer varsa rastgele hareket et" mantığı ekleyelim.
+            // Bu, önü tıkandığında yer değiştirmesini sağlar.
+            const randomMove = moves[Math.floor(Math.random() * moves.length)];
+            // Eğer hareket edeceği yer bir saldırı değilse hareket etsin. Kral'ı riske atmayalım.
+            if (randomMove.type === 'move') {
+                 unit.moveTo(randomMove.x, randomMove.y);
+                 console.log("AI King repositioned itself.");
+            }
+            return; // Kral hamlesini yaptı.
+        }
+        // ==========================================================
+        
 
         // Askeri birimler için saldırı/yaklaşma mantığı
         const attackMoves = moves.filter(m => m.type === 'attack');
