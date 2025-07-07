@@ -658,3 +658,91 @@ body {
     font-size: 12px;
     opacity: 0.9;
 }
+
+/* style.css dosyasındaki #unit-dialog stilini bulun ve değiştirin */
+
+/* Birim Diyalog Kutusu Konteyneri */
+#unit-dialog {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    width: 450px; /* Biraz daha geniş */
+    height: 200px; /* Biraz daha kısa */
+    z-index: 100;
+    pointer-events: none;
+    
+    /* Animasyon için başlangıç durumu */
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+    
+    /* YENİ: İçerik için Flexbox */
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    
+    /* YENİ: Arkaplan ve Çerçeve */
+    background: rgba(44, 62, 80, 0.9); /* Yarı saydam koyu mavi */
+    border-radius: 15px;
+    border-top: 2px solid #f39c12; /* Üstte turuncu bir çizgi */
+    box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+}
+
+#unit-dialog.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Diyalog kutusunun içindeki resim (Portre) */
+#unit-dialog img.portrait {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-right: 20px;
+    border: 2px solid #566573;
+}
+
+/* Diyalog kutusunun içindeki metin alanı */
+#unit-dialog .text-area {
+    color: #ecf0f1;
+    font-family: 'Garamond', serif;
+}
+
+#unit-dialog .unit-name {
+    font-size: 24px;
+    font-weight: bold;
+    color: #f39c12;
+    margin-bottom: 10px;
+}
+
+#unit-dialog .message {
+    font-size: 18px;
+    font-style: italic;
+}
+/* style.css dosyasının en sonuna ekleyin */
+/* style.css dosyasında .income-info stilini bulun ve değiştirin */
+
+#unit-dialog .income-info {
+    font-size: 13px;
+    color: #bdc3c7; /* Daha okunabilir bir renk */
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    line-height: 1.4;
+}
+
+/* YENİ: Gelir detaylarını düzenlemek için */
+#unit-dialog .income-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* İki sütunlu bir yapı */
+    gap: 5px 15px; /* Satırlar ve sütunlar arası boşluk */
+    margin-top: 5px;
+}
+
+/* YENİ: Her bir gelir kalemi için */
+#unit-dialog .income-item {
+    color: #2ecc71; /* Yeşil renk */
+    font-weight: bold;
+    font-size: 12px;
+}

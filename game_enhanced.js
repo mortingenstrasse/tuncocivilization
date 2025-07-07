@@ -490,7 +490,7 @@ Game.prototype.showWelcomePopup = function() {
         
         <h4>Controls & Gameplay:</h4>
         <ul>
-            <li>- Use <strong>WASD</strong> keys to move the camera around the map.</li>
+            <li>- Use <strong>Mouse Hold</strong>  to move the camera around the map.</li>
             <li>- Produce <strong>Workers</strong> to gather resources automatically each turn.</li>
             <!-- YENİ EKLENEN BİLGİ SATIRI -->
             <li>- <strong>Each Worker</strong> provides +10 Wood, +10 Stone, +5 Meat, +10 Grain, +3 Gold, +3 Fish per turn.</li>
@@ -556,6 +556,83 @@ Game.prototype.playNextTrack = function() {
 Game.prototype.gameLoop = function() { 
     this.render(); 
     requestAnimationFrame(() => this.gameLoop()); 
+};
+
+// game.js dosyasında uygun bir yere ekleyin
+
+// =======================================================================
+// YENİ VE BASİT BİRİM DİYALOG SİSTEMİ
+// =======================================================================
+// game.js dosyasındaki showUnitDialog fonksiyonunu bulun ve güncelleyin
+
+// =======================================================================
+// YENİ VE GELİŞMİŞ BİRİM DİYALOG SİSTEMİ (TASARIMA UYGUN)
+// =======================================================================
+// =======================================================================
+// BİRİM DİYALOG SİSTEMİ (GELİŞMİŞ GELİR GÖSTERİMİ)
+// =======================================================================
+Game.prototype.showUnitDialog = function(unit) {
+    this.hideUnitDialog(); 
+
+    const dialogElement = document.createElement('div');
+    dialogElement.id = 'unit-dialog';
+
+    const imageSrc = `${unit.type.toLowerCase()}Image.png`;
+    const unitName = unit.type.charAt(0).toUpperCase() + unit.type.slice(1);
+    
+    const responses = [
+        "At your command, my lord.", "Your orders, sire?", "I await your command.",
+        "What is your will?", "I stand ready, my liege."
+    ];
+    const randomMessage = responses[Math.floor(Math.random() * responses.length)];
+
+    let additionalContent = '';
+    if (unit.type === 'worker') {
+        const workerCount = this.units.filter(u => u.owner === 'human' && u.type === 'worker').length;
+        const incomePerWorker = { wood: 10, stone: 10, meat: 5, grain: 10, gold: 3, fish: 3 };
+        
+        // ==========================================================
+        // YENİ: Gelir metnini satır satır ve ikonlarla oluşturma
+        // ==========================================================
+        let incomeHTML = `<strong>Total Income / Turn (${workerCount} Workers):</strong><div class="income-details">`;
+        
+        // Her kaynak için ayrı bir satır oluştur
+        incomeHTML += `<span class="income-item">🪵 Wood: ${workerCount * incomePerWorker.wood}</span>`;
+        incomeHTML += `<span class="income-item">🪨 Stone: ${workerCount * incomePerWorker.stone}</span>`;
+        incomeHTML += `<span class="income-item">🪙 Gold: ${workerCount * incomePerWorker.gold}</span>`;
+        incomeHTML += `<span class="income-item">🥩 Meat: ${workerCount * incomePerWorker.meat}</span>`;
+        incomeHTML += `<span class="income-item">🌾 Grain: ${workerCount * incomePerWorker.grain}</span>`;
+        incomeHTML += `<span class="income-item">🐟 Fish: ${workerCount * incomePerWorker.fish}</span>`;
+
+        incomeHTML += '</div>';
+        additionalContent = `<div class="income-info">${incomeHTML}</div>`;
+        // ==========================================================
+    }
+
+    dialogElement.innerHTML = `
+        <img src="${imageSrc}" alt="${unit.type}" class="portrait">
+        <div class="text-area">
+            <div class="unit-name">${unitName}:</div>
+            <div class="message">"${randomMessage}"</div>
+            ${additionalContent} 
+        </div>
+    `;
+
+    document.body.appendChild(dialogElement);
+    
+    setTimeout(() => { dialogElement.classList.add('visible'); }, 10);
+};
+
+Game.prototype.hideUnitDialog = function() {
+    const dialogElement = document.getElementById('unit-dialog');
+    if (dialogElement) {
+        dialogElement.classList.remove('visible');
+        setTimeout(() => {
+            if (dialogElement.parentNode) {
+                dialogElement.parentNode.removeChild(dialogElement);
+            }
+        }, 300); // CSS transition süresiyle aynı olmalı
+    }
 };
 
 // WIN/LOSS DETECTION
@@ -1478,7 +1555,7 @@ Game.prototype.setupEvents = function() {
 */
 // handleTileClick fonksiyonunu bulun ve bu daha basit versiyonla değiştirin
 
-Game.prototype.handleTileClick = function(x, y) {
+/*Game.prototype.handleTileClick = function(x, y) {
     if (this.currentPlayer !== 'human' || this.gameState !== 'playing') return;
     
     const unitOnTile = this.getUnitAt(x, y);
@@ -1505,6 +1582,47 @@ Game.prototype.handleTileClick = function(x, y) {
     else if (unitOnTile && unitOnTile.owner === 'human' && !unitOnTile.hasActed) {
         // Tıklanan birim hareket edebiliyorsa seç (artık Kral da dahil)
         this.selectUnit(unitOnTile); 
+    }
+};
+*/
+Game.prototype.handleTileClick = function(x, y) {
+    if (this.currentPlayer !== 'human' || this.gameState !== 'playing') return;
+    
+    const unitOnTile = this.getUnitAt(x, y);
+
+    // Seçili birim varken bir hamle yapılıyor
+    if (this.selectedUnit) {
+        const move = this.possibleMoves.find(m => m.x === x && m.y === y);
+        if (move) { 
+            if (move.type === 'attack') {
+                this.executeAttack(this.selectedUnit, unitOnTile); 
+            } else {
+                this.selectedUnit.moveTo(x, y); 
+            }
+            this.deselectUnit();
+            this.hideUnitDialog(); // Hamle yapıldıktan sonra diyalog kutusunu kapat
+        } else { 
+            // Geçersiz bir hamle yapıldı, seçimi ve diyalog kutusunu iptal et
+            this.deselectUnit();
+            this.hideUnitDialog();
+            
+            // Belki yeni bir birim seçiliyor
+            if (unitOnTile && unitOnTile.owner === 'human' && !unitOnTile.hasActed) {
+                this.selectUnit(unitOnTile); 
+                this.showUnitDialog(unitOnTile); // Yeni birim seçildi, diyalog kutusunu göster
+            }
+        }
+    } 
+    // Hiçbir birim seçili değilken tıklanıyor
+    else if (unitOnTile && unitOnTile.owner === 'human' && !unitOnTile.hasActed) {
+        // Tıklanan birim hareket edebiliyorsa seç ve diyalog kutusunu göster
+        this.selectUnit(unitOnTile); 
+        this.showUnitDialog(unitOnTile);
+    } 
+    // Boş bir karoya veya düşman birimine tıklandıysa
+    else {
+        this.deselectUnit();
+        this.hideUnitDialog(); // Her durumda diyalog kutusunu kapat
     }
 };
 
