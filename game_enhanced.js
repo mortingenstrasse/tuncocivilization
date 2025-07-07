@@ -439,6 +439,14 @@ function Game() {
     this.isSnowing = true; // Kar yağışını açıp kapatmak için
     // YENİ: Hamle günlüğü için mesaj listesi
     this.moveLogMessages = [];
+    // ==========================================================
+    // YENİ: ZOOM İÇİN DEĞİŞKENLER
+    // ==========================================================
+    this.zoomLevel = 1.0; // Başlangıç zoom seviyesi (%100)
+    this.minZoom = 0.5;   // En fazla ne kadar uzaklaşabilir (%50)
+    this.maxZoom = 1.5;   // En fazla ne kadar yakınlaşabilir (%150)
+    this.baseTileSize = { width: 64, height: 32 }; // Orijinal karo boyutunu sakla
+    // ==========================================================
 }
 
 // GAME INITIALIZATION
@@ -1536,6 +1544,48 @@ Game.prototype.setupEvents = function() {
         }
         // Eğer uzun bir sürükleme yapıldıysa, click olayını tetikleme.
     });
+
+    // ==========================================================
+    // YENİ: FARE TEKERLEĞİ İLE ZOOM YAPMA
+    // ==========================================================
+ // game.js dosyasındaki wheel olay dinleyicisini bulun ve değiştirin
+
+this.canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+
+    // 1. Zoom yapmadan ÖNCE fare imlecinin dünya üzerindeki konumunu al
+    const rect = this.canvas.getBoundingClientRect();
+    const scaleX = this.canvas.width / rect.width;
+    const scaleY = this.canvas.height / rect.height;
+    const mouseScreenX = (e.clientX - rect.left) * scaleX;
+    const mouseScreenY = (e.clientY - rect.top) * scaleY;
+    const worldPosBeforeZoom = this.screenToWorld(mouseScreenX, mouseScreenY);
+
+    // 2. Zoom seviyesini güncelle (bu kısım aynı)
+    const zoomAmount = 0.1;
+    if (e.deltaY > 0) {
+        this.zoomLevel -= zoomAmount;
+    } else {
+        this.zoomLevel += zoomAmount;
+    }
+    this.zoomLevel = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoomLevel));
+
+    // 3. Yeni karo boyutunu hesapla (bu kısım aynı)
+    this.tileSize.width = this.baseTileSize.width * this.zoomLevel;
+    this.tileSize.height = this.baseTileSize.height * this.zoomLevel;
+
+    // 4. Zoom yaptıktan SONRA fare imlecinin YENİ dünya konumunu al
+    const worldPosAfterZoom = this.screenToWorld(mouseScreenX, mouseScreenY);
+
+    // 5. Kamerayı, iki dünya konumu arasındaki fark kadar kaydır
+    // Bu, fare imlecinin altındaki noktanın sabit kalmasını sağlar.
+    this.camera.x += worldPosBeforeZoom.x - worldPosAfterZoom.x;
+    this.camera.y += worldPosBeforeZoom.y - worldPosAfterZoom.y;
+
+}, { passive: false });
+    // ==========================================================
+
+    // ... mevcut buton dinleyicileri ...
     
     // --- SİZİN BUTON BAĞLANTILARINIZ (DEĞİŞİKLİK YOK) ---
     document.getElementById('showTutorial').addEventListener('click', () => this.showWelcomePopup());
