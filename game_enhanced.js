@@ -1008,7 +1008,7 @@ Game.prototype.generateMap = function() {
 // MİNİMAL HARİTA ÜRETİM DÜZELTMESİ - DAHA AZ SU VE DAĞ
 // =======================================================================
 
-Game.prototype.generateTile = function(x, y) {
+/*Game.prototype.generateTile = function(x, y) {
     const name = this.getTileName(x, y);
 
     const noise = this.simpleNoise(x * 0.04, y * 0.04);
@@ -1039,7 +1039,93 @@ Game.prototype.generateTile = function(x, y) {
     
     return new Tile(x, y, name, terrain, resource, amount);
 };
+*/
 
+
+// =======================================================================
+// NİHAİ HARİTA ÜRETİMİ (KONTROLLÜ RASTGELELİK + GÜVENLİ BAŞLANGIÇ)
+// =======================================================================
+
+Game.prototype.generateMap = function() {
+    console.log(`Generating map with a variable-sized gulf...`);
+
+    // 1. Her oyun için KÖRFEZİN ÖZELLİKLERİNİ RASTGELE BELİRLE
+    this.gulfSettings = {
+        // Körfez haritanın yarısını mı yoksa dörtte birini mi kaplasın?
+        size: Math.random() < 0.5 ? 0.75 : 0.50, // %50 ihtimalle 3/4, %50 ihtimalle 2/4
+        
+        // Körfez haritanın üstünde mi, ortasında mı, altında mı olsun?
+        verticalPosition: ['top', 'middle', 'bottom'][Math.floor(Math.random() * 3)],
+        
+        // Körfez haritanın sağında mı, solunda mı olsun?
+        horizontalPosition: Math.random() < 0.5 ? 'left' : 'right'
+    };
+    
+    console.log('This game\'s gulf settings:', this.gulfSettings);
+
+    // 2. Harita dizisini, her karo için generateTile'ı çağırarak oluştur
+    this.map = Array.from({ length: this.mapWidth }, (_, x) =>
+        Array.from({ length: this.mapHeight }, (_, y) => this.generateTile(x, y))
+    );
+};
+
+Game.prototype.generateTile = function(x, y) {
+    const name = this.getTileName(x, y);
+    
+    // --- ÖNCELİK 1: GÜVENLİ BAŞLANGIÇ BÖLGELERİ ---
+    // Bu kontrol her zaman en başta çalışır ve diğer her şeyi ezer.
+    const humanStartY = this.mapHeight - 5;
+    const aiStartY = 4;
+    const startZoneRadius = 5;
+
+    const distToHumanStart = Math.sqrt(Math.pow(x - Math.floor(this.mapWidth / 2), 2) + Math.pow(y - humanStartY, 2));
+    const distToAiStart = Math.sqrt(Math.pow(x - Math.floor(this.mapWidth / 2), 2) + Math.pow(y - aiStartY, 2));
+
+    if (distToHumanStart < startZoneRadius || distToAiStart < startZoneRadius) {
+        return new Tile(x, y, name, 'plains', null, 0); // Güvenli başlangıç bölgesi
+    }
+
+    // --- ÖNCELİK 2: BÜYÜK DEĞİŞKEN KÖRFEZ ---
+    // generateMap'te belirlenen ayarlara göre körfezi oluştur.
+    const gs = this.gulfSettings;
+    let seaCenterY;
+    if (gs.verticalPosition === 'top') seaCenterY = this.mapHeight * 0.25;
+    else if (gs.verticalPosition === 'bottom') seaCenterY = this.mapHeight * 0.75;
+    else seaCenterY = this.mapHeight * 0.5;
+
+    const seaWidth = 6; // Körfezi biraz daha kalın yapalım
+    const seaWobble = this.simpleNoise(x * 0.1, y * 0.1) * 3; // Kenarları daha dalgalı olsun
+    const inVerticalZone = y > seaCenterY - seaWidth + seaWobble && y < seaCenterY + seaWidth + seaWobble;
+
+    if (inVerticalZone) {
+        if ((gs.horizontalPosition === 'left' && x < this.mapWidth * gs.size) ||
+            (gs.horizontalPosition === 'right' && x > this.mapWidth * (1 - gs.size))) {
+            return new Tile(x, y, name, 'water', 'fish', 1500);
+        }
+    }
+
+    // --- ÖNCELİK 3: GERİ KALAN ALANLAR İÇİN RASTGELE ARAZİ ---
+    // Gürültüye dayalı organik arazi üretimi.
+    const noise = this.simpleNoise(x * 0.08, y * 0.08);
+
+    if (noise > 0.9) { // Dağlar (çok nadir)
+        return new Tile(x, y, name, 'mountain', 'stone', 2500);
+    }
+    if (noise > 0.4) { // Ormanlar
+        return new Tile(x, y, name, 'forest', 'wood', 1000);
+    }
+    if (noise < -0.2) { // Bataklıklar
+        return new Tile(x, y, name, 'swamp', 'meat', 600);
+    }
+    // Küçük gölcükler için farklı bir gürültü kullanalım
+    const puddleNoise = this.simpleNoise(x * 0.35, y * 0.35);
+    if (puddleNoise > 0.9) {
+        return new Tile(x, y, name, 'water', 'fish', 300);
+    }
+
+    // Yukarıdaki koşulların hiçbiri sağlanmazsa, varsayılan araziyi döndür.
+    return new Tile(x, y, name, 'grass');
+};
 Game.prototype.simpleNoise = function(x, y) { 
     const s = Math.sin(x*12.9898+y*78.233)*43758.5453; 
     return (s-Math.floor(s))*2-1; 
@@ -1277,38 +1363,89 @@ Game.prototype.playSoundEffect = function(soundFile) {
 
 // drawMoveLog fonksiyonu aynı kalabilir, bir değişiklik gerekmez.
 
+// =======================================================================
+// ETKİLEŞİM (CLICK & DRAG KAMERA KONTROLÜ İLE GÜNCELLENDİ)
+// =======================================================================
+
 Game.prototype.setupEvents = function() {
+    
+    // --- Tıkla ve Sürükle için Değişkenler ---
+    let isDragging = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    // Sürükleme ile normal tıklamayı ayırmak için küçük bir eşik
+    let dragThreshold = 5; 
+    let dragDistance = 0;
+
+    // --- KLAVYE KONTROLÜ GÜNCELLENDİ ---
+    // Sadece 'escape' tuşu dinleniyor, WASD kaldırıldı.
     document.addEventListener('keydown', (e) => { 
-        const speed = this.cameraSpeed; 
-        switch(e.key.toLowerCase()) { 
-            case 'w': this.camera.y -= speed; break; 
-            case 's': this.camera.y += speed; break; 
-            case 'a': this.camera.x -= speed; break; 
-            case 'd': this.camera.x += speed; break; 
-            case 'escape': this.deselectUnit(); break; 
-        } 
+        if (e.key.toLowerCase() === 'escape') {
+            this.deselectUnit(); 
+        }
+    });
+
+    // --- MOUSE OLAYLARI ---
+
+    // 1. Fareye basıldığında
+    this.canvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        dragDistance = 0; // Sürükleme mesafesini sıfırla
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+    });
+
+    // 2. Fare bırakıldığında
+    this.canvas.addEventListener('mouseup', (e) => {
+        isDragging = false;
+    });
+
+    // 3. Fare canvas'tan ayrıldığında
+    this.canvas.addEventListener('mouseleave', (e) => {
+        isDragging = false;
+    });
+
+    // 4. Fare hareket ettiğinde
+    this.canvas.addEventListener('mousemove', (e) => {
+        if (isDragging) {
+            const dx = e.clientX - lastMouseX;
+            const dy = e.clientY - lastMouseY;
+            
+            // Sürükleme mesafesini hesapla
+            dragDistance += Math.abs(dx) + Math.abs(dy);
+            
+            this.camera.x -= dx;
+            this.camera.y -= dy;
+            
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+
+            // Sürükleme sırasında hover efektini geçici olarak durdur
+            this.hoveredTile = null;
+        } else {
+            // Sürükleme yoksa normal hover efektini çalıştır
+            const rect = this.canvas.getBoundingClientRect(); 
+            const scaleX = this.canvas.width / rect.width; 
+            const scaleY = this.canvas.height / rect.height; 
+            const screenX = (e.clientX - rect.left) * scaleX; 
+            const screenY = (e.clientY - rect.top) * scaleY; 
+            const worldCoords = this.screenToWorld(screenX, screenY); 
+            this.hoveredTile = this.worldToTile(worldCoords.x, worldCoords.y);
+        }
     });
     
-    this.canvas.addEventListener('mousemove', (e) => { 
-        const rect = this.canvas.getBoundingClientRect(); 
-        const scaleX = this.canvas.width / rect.width; 
-        const scaleY = this.canvas.height / rect.height; 
-        const screenX = (e.clientX - rect.left) * scaleX; 
-        const screenY = (e.clientY - rect.top) * scaleY; 
-        const worldCoords = this.screenToWorld(screenX, screenY); 
-        this.hoveredTile = this.worldToTile(worldCoords.x, worldCoords.y); 
+    // 5. Tıklama olayı
+    this.canvas.addEventListener('click', (e) => {
+        // Eğer sürükleme mesafesi çok kısaysa, bunu bir "tıklama" olarak kabul et.
+        if (dragDistance < dragThreshold) {
+            if (this.hoveredTile) this.handleTileClick(this.hoveredTile.x, this.hoveredTile.y);
+        }
+        // Eğer uzun bir sürükleme yapıldıysa, click olayını tetikleme.
     });
     
-    this.canvas.addEventListener('click', (e) => { 
-        if (this.hoveredTile) this.handleTileClick(this.hoveredTile.x, this.hoveredTile.y); 
-    });
-    // "Game Tutorial" butonu showWelcomePopup fonksiyonunu çağırır.
+    // --- SİZİN BUTON BAĞLANTILARINIZ (DEĞİŞİKLİK YOK) ---
     document.getElementById('showTutorial').addEventListener('click', () => this.showWelcomePopup());
-
     document.getElementById('endTurn').addEventListener('click', () => this.endTurn());
-
-    
-    // Unit production buttons
     document.getElementById('produceWorker').addEventListener('click', () => this.buildingSystem.produceUnit('worker', 'human'));
     document.getElementById('producePawn').addEventListener('click', () => this.buildingSystem.produceUnit('pawn', 'human'));
     document.getElementById('produceRook').addEventListener('click', () => this.buildingSystem.produceUnit('rook', 'human'));
