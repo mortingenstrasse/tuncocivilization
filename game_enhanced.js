@@ -1,15 +1,58 @@
 // =======================================================================
-// ENHANCED CHESS STRATEGY GAME - WITH KING MECHANICS AND AI
+// ENHANCED CHESS STRATEGY GAME - WITH ANIMATED WATER TILES, TREASURE CHESTS, AND FOG OF WAR
 // =======================================================================
 console.log('Loading enhanced chess strategy game...');
 
 let game = null;
 
 class ImageManager {
-    constructor() { this.images = {}; this.loadedCount = 0; this.totalImages = 0; this.onAllLoaded = null; }
-    loadImage(name, path) { this.totalImages++; const img = new Image(); img.onload = () => this._imageLoaded(); img.onerror = () => { console.error(`Failed to load: ${path}`); this._imageLoaded(); }; img.src = path; this.images[name] = img; }
-    _imageLoaded() { this.loadedCount++; if (this.loadedCount === this.totalImages && this.onAllLoaded) this.onAllLoaded(); }
-    getImage(name) { return this.images[name]; }
+    constructor() { 
+        this.images = {}; 
+        this.loadedCount = 0; 
+        this.totalImages = 0; 
+        this.onAllLoaded = null; 
+        // NEW: Water animation frames
+        this.waterFrames = [];
+        this.waterAnimationSpeed = 8; // frames per second
+        this.currentWaterFrame = 0;
+        this.lastWaterFrameTime = 0;
+    }
+    
+    loadImage(name, path) { 
+        this.totalImages++; 
+        const img = new Image(); 
+        img.onload = () => this._imageLoaded(); 
+        img.onerror = () => { console.error(`Failed to load: ${path}`); this._imageLoaded(); }; 
+        img.src = path; 
+        this.images[name] = img; 
+    }
+    
+    // NEW: Load water animation frames
+    loadWaterFrames() {
+        for (let i = 1; i <= 16; i++) {
+            this.loadImage(`water_frame_${i}`, `tile_water${i}.png`);
+            this.waterFrames.push(`water_frame_${i}`);
+        }
+    }
+    
+    // NEW: Get current water frame
+    getCurrentWaterFrame() {
+        const currentTime = Date.now();
+        if (currentTime - this.lastWaterFrameTime > 1000 / this.waterAnimationSpeed) {
+            this.currentWaterFrame = (this.currentWaterFrame + 1) % this.waterFrames.length;
+            this.lastWaterFrameTime = currentTime;
+        }
+        return this.images[this.waterFrames[this.currentWaterFrame]];
+    }
+    
+    _imageLoaded() { 
+        this.loadedCount++; 
+        if (this.loadedCount === this.totalImages && this.onAllLoaded) this.onAllLoaded(); 
+    }
+    
+    getImage(name) { 
+        return this.images[name]; 
+    }
 }
 
 // =======================================================================
@@ -49,6 +92,117 @@ class Snowflake {
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
         ctx.fill();
+    }
+}
+
+// =======================================================================
+// NEW: TREASURE CHEST SYSTEM
+// =======================================================================
+class TreasureChest {
+    constructor(x, y, game) {
+        this.x = x;
+        this.y = y;
+        this.game = game;
+        this.isOpened = false;
+        this.rewards = this.generateRewards();
+    }
+    
+    generateRewards() {
+        // Random rewards: +1000 gold, +500 gold, or +100 gold
+        const possibleRewards = [
+            { gold: 1000 },
+            { gold: 500 },
+            { gold: 100 }
+        ];
+        return possibleRewards[Math.floor(Math.random() * possibleRewards.length)];
+    }
+    
+    canBeOpenedBy(unit) {
+        return unit.type === 'worker' && unit.owner === 'human';
+    }
+    
+    open(unit) {
+        if (this.isOpened || !this.canBeOpenedBy(unit)) {
+            return false;
+        }
+        
+        this.isOpened = true;
+        
+        // Give rewards to player
+        Object.keys(this.rewards).forEach(resource => {
+            this.game.humanResources.addResource(resource, this.rewards[resource]);
+        });
+        
+        // Show dialog
+        this.showChestDialog();
+        
+        // Log the event
+        const rewardText = Object.keys(this.rewards).map(res => 
+            `+${this.rewards[res]} ${res}`
+        ).join(', ');
+        this.game.logSpecialMessage(`Treasure chest opened! Gained: ${rewardText}`, 'rgba(255, 215, 0, 0.9)');
+        
+        return true;
+    }
+    
+    showChestDialog() {
+        // Remove any existing dialog
+        const existingDialog = document.getElementById('chest-dialog');
+        if (existingDialog) {
+            existingDialog.remove();
+        }
+        
+        const dialogElement = document.createElement('div');
+        dialogElement.id = 'chest-dialog';
+        dialogElement.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #8B4513, #A0522D);
+            color: #FFD700;
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #FFD700;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            font-family: Arial, sans-serif;
+            z-index: 10000;
+            min-width: 300px;
+        `;
+        
+        const rewardText = Object.keys(this.rewards).map(res => 
+            `+${this.rewards[res]} ${res.charAt(0).toUpperCase() + res.slice(1)}`
+        ).join(', ');
+        
+        dialogElement.innerHTML = `
+            <img src="chestImage.png" alt="Treasure Chest" style="width: 64px; height: 64px; margin-bottom: 15px;">
+            <h3 style="margin: 0 0 15px 0; color: #FFD700;">Treasure Chest Opened!</h3>
+            <p style="margin: 0 0 15px 0; font-size: 16px;">Only workers can open treasure chests</p>
+            <p style="margin: 0 0 20px 0; font-size: 18px; font-weight: bold;">Reward: ${rewardText}</p>
+            <button id="close-chest-dialog" style="
+                background: linear-gradient(135deg, #FFD700, #FFA500);
+                color: #8B4513;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: pointer;
+            ">Continue</button>
+        `;
+        
+        document.body.appendChild(dialogElement);
+        
+        // Auto-close after 3 seconds or when button is clicked
+        const closeDialog = () => {
+            if (dialogElement.parentNode) {
+                dialogElement.parentNode.removeChild(dialogElement);
+            }
+        };
+        
+        document.getElementById('close-chest-dialog').addEventListener('click', closeDialog);
+        setTimeout(closeDialog, 3000);
     }
 }
 
@@ -283,32 +437,6 @@ class Bishop extends Unit {
         return moves;
     }
 }
-/*class Bishop extends Unit {
-    constructor(x, y, owner, game) {
-        super(x, y, owner, 'bishop', game);
-    }
-
-    getPossibleMoves() {
-        const moves = [];
-        const directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]]; // Çapraz yönler
-
-        for (const [dx, dy] of directions) {
-            for (let i = 1; i < Math.max(this.game.mapWidth, this.game.mapHeight); i++) {
-                const newX = this.x + dx * i;
-                const newY = this.y + dy * i;
-                
-                const targetInfo = this.game.getTileTargetInfo(newX, newY, this.owner);
-                
-                if (!targetInfo.isValid) break;
-                
-                moves.push({ x: newX, y: newY, type: targetInfo.type });
-                
-                if (targetInfo.type === 'attack') break;
-            }
-        }
-        return moves;
-    }
-}*/
 
 class Knight extends Unit {
     constructor(x, y, owner, game) { super(x, y, owner, 'knight', game); }
@@ -465,7 +593,8 @@ class BuildingSystem {
                     
                     if (this.game.isValidTile(x, y) && 
                         this.game.map[x][y].canWalkOn() && 
-                        !this.game.getUnitAt(x, y)) {
+                        !this.game.getUnitAt(x, y) &&
+                        !this.game.getChestAt(x, y)) { // NEW: Also check for chests
                         return { x, y };
                     }
                 }
@@ -521,6 +650,10 @@ function Game() {
     this.baseTileSize = { width: 64, height: 32 }; // Orijinal karo boyutunu sakla
     // ==========================================================
     this.fogOfWar = new FogOfWar(this.mapWidth, this.mapHeight);
+    
+    // NEW: Treasure chest system
+    this.treasureChests = [];
+    this.chestSpawnInterval = 20; // Spawn chest every 20 turns
 }
 
 // GAME INITIALIZATION
@@ -552,6 +685,108 @@ Game.prototype.init = function() {
 };
 
 // =======================================================================
+// NEW: TREASURE CHEST MANAGEMENT
+// =======================================================================
+Game.prototype.spawnTreasureChest = function() {
+    // Find a random empty location on walkable terrain
+    let attempts = 0;
+    const maxAttempts = 100;
+    
+    while (attempts < maxAttempts) {
+        const x = Math.floor(Math.random() * this.mapWidth);
+        const y = Math.floor(Math.random() * this.mapHeight);
+        
+        if (this.isValidTile(x, y) && 
+            this.map[x][y].canWalkOn() && 
+            !this.getUnitAt(x, y) && 
+            !this.getChestAt(x, y)) {
+            
+            const chest = new TreasureChest(x, y, this);
+            this.treasureChests.push(chest);
+            
+            this.logSpecialMessage(`A treasure chest has appeared at ${this.getTileName(x, y)}!`, 'rgba(255, 215, 0, 0.9)');
+            console.log(`Treasure chest spawned at (${x}, ${y})`);
+            return;
+        }
+        attempts++;
+    }
+    
+    console.log('Failed to spawn treasure chest - no valid location found');
+};
+
+Game.prototype.getChestAt = function(x, y) {
+    return this.treasureChests.find(chest => chest.x === x && chest.y === y && !chest.isOpened);
+};
+
+Game.prototype.handleChestInteraction = function(x, y, unit) {
+    const chest = this.getChestAt(x, y);
+    if (!chest) return false;
+    
+    if (!chest.canBeOpenedBy(unit)) {
+        // Show message that only workers can open chests
+        this.showChestWorkerOnlyDialog();
+        return false;
+    }
+    
+    return chest.open(unit);
+};
+
+Game.prototype.showChestWorkerOnlyDialog = function() {
+    // Remove any existing dialog
+    const existingDialog = document.getElementById('chest-worker-dialog');
+    if (existingDialog) {
+        existingDialog.remove();
+    }
+    
+    const dialogElement = document.createElement('div');
+    dialogElement.id = 'chest-worker-dialog';
+    dialogElement.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: linear-gradient(135deg, #8B4513, #A0522D);
+        color: #FFD700;
+        padding: 30px;
+        border-radius: 15px;
+        border: 3px solid #FFD700;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        text-align: center;
+        font-family: Arial, sans-serif;
+        z-index: 10000;
+        min-width: 300px;
+    `;
+    
+    dialogElement.innerHTML = `
+        <img src="chestImage.png" alt="Treasure Chest" style="width: 64px; height: 64px; margin-bottom: 15px;">
+        <h3 style="margin: 0 0 15px 0; color: #FFD700;">Treasure Chest</h3>
+        <p style="margin: 0 0 20px 0; font-size: 16px;">Only workers can open treasure chests!</p>
+        <button id="close-worker-dialog" style="
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #8B4513;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        ">OK</button>
+    `;
+    
+    document.body.appendChild(dialogElement);
+    
+    // Auto-close after 2 seconds or when button is clicked
+    const closeDialog = () => {
+        if (dialogElement.parentNode) {
+            dialogElement.parentNode.removeChild(dialogElement);
+        }
+    };
+    
+    document.getElementById('close-worker-dialog').addEventListener('click', closeDialog);
+    setTimeout(closeDialog, 2000);
+};
+
+// =======================================================================
 // YENİ BÖLÜM: BAŞLANGIÇ BİLGİLENDİRME POP-UP'I
 // =======================================================================
 Game.prototype.showWelcomePopup = function() {
@@ -576,6 +811,8 @@ Game.prototype.showWelcomePopup = function() {
             <li>- Produce <strong>Workers</strong> to gather resources automatically each turn.</li>
             <!-- YENİ EKLENEN BİLGİ SATIRI -->
             <li>- <strong>Each Worker</strong> provides +10 Wood, +10 Stone, +5 Meat, +10 Grain, +3 Gold, +3 Fish per turn.</li>
+            <li>- <strong>Treasure chests</strong> appear every 20 turns and can only be opened by workers!</li>
+            <li>- <strong>Fog of war</strong> hides unexplored areas - move your units to reveal the map!</li>
             <li>- Use your resources to build a powerful army based on <strong>chess pieces</strong>.</li>
             <li>- Click the <strong>End Turn</strong> button to finish your turn and let the AI play.</li>
         </ul>
@@ -817,6 +1054,12 @@ Game.prototype.restartGame = function() {
     this.humanResources = new ResourceManager();
     this.aiResources = new ResourceManager();
     
+    // Reset treasure chests
+    this.treasureChests = [];
+    
+    // Reset fog of war
+    this.fogOfWar = new FogOfWar(this.mapWidth, this.mapHeight);
+    
     // Regenerate map and units
     this.generateMap();
     this.createUnits();
@@ -859,6 +1102,12 @@ Game.prototype.endTurn = function() {
         this.currentPlayer = 'human';
         this.turn++;
         this.units.forEach(u => u.resetTurn());
+        
+        // NEW: Check if we should spawn a treasure chest
+        if (this.turn % this.chestSpawnInterval === 0) {
+            this.spawnTreasureChest();
+        }
+        
         // YENİ: Sıra oyuncuya geçtiğinde sisi güncelle
         this.fogOfWar.update(this.units);
 
@@ -868,78 +1117,6 @@ Game.prototype.endTurn = function() {
 };
 
 // AI LOGIC
-/*Game.prototype.processAITurn = function() {
-    if (this.gameState !== 'playing') return;
-    
-    console.log("AI is thinking...");
-    const aiUnits = this.units.filter(u => u.owner === 'ai' && u.type !== 'king'); // Exclude king from AI movement
-    
-    // Military units strategy
-    aiUnits.filter(u => u.type !== 'worker').forEach(unit => {
-        if (unit.hasActed) return;
-        
-        const moves = unit.getPossibleMoves();
-        const attackMoves = moves.filter(m => m.type === 'attack');
-        
-        if (attackMoves.length > 0) {
-            const randomAttack = attackMoves[Math.floor(Math.random() * attackMoves.length)];
-            const targetUnit = this.getUnitAt(randomAttack.x, randomAttack.y);
-            this.executeAttack(unit, targetUnit);
-        } else if (moves.length > 0) {
-            const humanUnits = this.units.filter(u => u.owner === 'human');
-            if(humanUnits.length > 0) {
-                let closestEnemy = humanUnits[0];
-                let minDistance = Infinity;
-                humanUnits.forEach(hu => {
-                    const dist = Math.abs(hu.x - unit.x) + Math.abs(hu.y - unit.y);
-                    if(dist < minDistance) {
-                        minDistance = dist;
-                        closestEnemy = hu;
-                    }
-                });
-
-                let bestMove = moves[0];
-                let bestMoveDist = Infinity;
-                moves.forEach(move => {
-                    const distToEnemy = Math.abs(move.x - closestEnemy.x) + Math.abs(move.y - closestEnemy.y);
-                    if(distToEnemy < bestMoveDist) {
-                        bestMoveDist = distToEnemy;
-                        bestMove = move;
-                    }
-                });
-                unit.moveTo(bestMove.x, bestMove.y);
-            }
-        }
-    });
-
-    // Worker movement
-    aiUnits.filter(u => u.type === 'worker' && !u.hasActed).forEach(worker => {
-        const moves = worker.getPossibleMoves();
-        if(moves.length > 0) {
-            const randomMove = moves[Math.floor(Math.random() * moves.length)];
-            worker.moveTo(randomMove.x, randomMove.y);
-        }
-    });
-
-    // Unit production
-    if (this.aiResources.canAfford({wood: 10})) {
-        const workerCount = aiUnits.filter(u => u.type === 'worker').length;
-        if(workerCount < 5) {
-            this.buildingSystem.produceUnit('worker', 'ai');
-        }
-    }
-    
-    // Try to produce military units
-    if (this.aiResources.canAfford({wood: 15, stone: 5})) {
-        this.buildingSystem.produceUnit('pawn', 'ai');
-    }
-    
-    this.endTurn();
-};
-*/
-// =======================================================================
-// EKSİKSİZ VE DÜZELTİLMİŞ YAPAY ZEKA MANTIĞI
-// =======================================================================
 Game.prototype.processAITurn = function() {
     if (this.gameState !== 'playing') return;
     
@@ -1038,19 +1215,6 @@ Game.prototype.processAITurn = function() {
         }
     });
 
-   /* // 2. ÜRETİM STRATEJİSİ (Hareketler bittikten sonra)
-    const currentAiUnits = this.units.filter(u => u.owner === 'ai'); // Güncel birim listesini al
-    const workerCount = currentAiUnits.filter(u => u.type === 'worker').length;
-    const pawnCount = currentAiUnits.filter(u => u.type === 'pawn').length;
-    // ... diğer birimlerin sayımı ...
-
-    if (workerCount < 5) { this.buildingSystem.produceUnit('worker', 'ai'); }
-    else if (pawnCount < 4) { this.buildingSystem.produceUnit('pawn', 'ai'); }
-    // ... diğer üretim else if'leri ...
-    
-    console.log("AI finished its turn.");
-    this.endTurn();
-    */
    // 2. YENİ VE TIKANMAYAN ÜRETİM STRATEJİSİ
     // ==========================================================
     const workerCount = aiUnits.filter(u => u.type === 'worker').length;
@@ -1085,23 +1249,6 @@ Game.prototype.processAITurn = function() {
 };
 
 // COMBAT SYSTEM
-/*Game.prototype.executeAttack = function(attacker, defender) { 
-    console.log(`${attacker.owner} ${attacker.type} attacks ${defender.owner} ${defender.type}`); 
-    const defenderDestroyed = defender.takeDamage(50); 
-    if (defenderDestroyed) {
-        this.units = this.units.filter(u => u !== defender);
-        
-        // Check if a king was killed
-        if (defender.type === 'king') {
-            setTimeout(() => this.checkWinCondition(), 100);
-        }
-    }
-    attacker.hasActed = true; 
-};
-*/
-// =======================================================================
-// YENİ SATRANÇ SAVAŞ SİSTEMİ
-// =======================================================================
 Game.prototype.executeAttack = function(attacker, defender) {
     // 1. Saldırı mesajını oluştur
     const attackerName = `${attacker.owner === 'human' ? 'Your' : 'Enemy'} ${attacker.type}`;
@@ -1132,7 +1279,11 @@ Game.prototype.executeAttack = function(attacker, defender) {
 // Continue with the rest of the original functions...
 Game.prototype.loadAllImages = function() {
     const im = this.imageManager;
-    ['grass', 'forest', 'mountain', 'water', 'plains', 'swamp'].forEach(t => im.loadImage(t, `tile_${t}.png`));
+    ['grass', 'forest', 'mountain', 'plains', 'swamp'].forEach(t => im.loadImage(t, `tile_${t}.png`));
+    
+    // NEW: Load water animation frames instead of single water tile
+    im.loadWaterFrames();
+    
     im.loadImage('castle_human', 'castle_human.png'); 
     im.loadImage('castle_ai', 'castle_ai.png');
     im.loadImage('worker_human', 'unit_worker_human.png'); 
@@ -1146,7 +1297,10 @@ Game.prototype.loadAllImages = function() {
     im.loadImage('knight_human', 'unit_knight_human.png');
     im.loadImage('knight_ai', 'unit_knight_ai.png');
     im.loadImage('queen_human', 'unit_queen_human.png');
-    im.loadImage('queen_ai', 'unit_queen_ai.png');// YENİ: Sandık resimlerini yükle
+    im.loadImage('queen_ai', 'unit_queen_ai.png');
+    
+    // NEW: Load treasure chest image
+    im.loadImage('chest', 'chest.png');
     
 };
 
@@ -1154,77 +1308,6 @@ Game.prototype.generateMap = function() {
     this.map = Array.from({ length: this.mapWidth }, (_, x) => 
         Array.from({ length: this.mapHeight }, (_, y) => this.generateTile(x, y)));
 };
-
-/*Game.prototype.generateTile = function(x, y) {
-    const name = this.getTileName(x, y);
-    //const noise = this.simpleNoise(x * 0.1, y * 0.1);
-    const noise = this.simpleNoise(x * 0.04, y * 0.04);
-    const waterNoise = this.simpleNoise(x * 0.05, y * 0.05);
-    let terrain = 'grass', resource = null, amount = 0;
-    
-    if (waterNoise < -0.4) { 
-        terrain = 'water'; 
-    } else if (noise > 0.7) { 
-        terrain = 'mountain'; 
-        if (Math.random() > 0.6) { resource = 'stone'; amount = 2500; } 
-    } else if (noise > 0.4) { 
-        terrain = 'forest'; 
-        if (Math.random() > 0.5) { resource = 'wood'; amount = 1000; } 
-    } else if (noise > 0.1) {
-        terrain = 'plains';
-        if (Math.random() > 0.7) { resource = 'grain'; amount = 800; }
-    } else if (noise < -0.2) {
-        terrain = 'swamp';
-        if (Math.random() > 0.8) { resource = 'fish'; amount = 600; }
-    }
-    
-    return new Tile(x, y, name, terrain, resource, amount);
-};*/
-// =======================================================================
-// MİNİMAL HARİTA ÜRETİM DÜZELTMESİ
-// =======================================================================
-
-// =======================================================================
-// MİNİMAL HARİTA ÜRETİM DÜZELTMESİ - DAHA AZ SU VE DAĞ
-// =======================================================================
-
-/*Game.prototype.generateTile = function(x, y) {
-    const name = this.getTileName(x, y);
-
-    const noise = this.simpleNoise(x * 0.04, y * 0.04);
-    const waterNoise = noise; 
-
-    let terrain = 'grass', resource = null, amount = 0;
-    
-    // --- DEĞİŞİKLİK BURADA ---
-    // Su ve Dağ eşiklerini daha zorlu hale getiriyoruz.
-    // -1'e daha yakın ve +1'e daha yakın değerler seçiyoruz.
-
-    if (waterNoise < -0.8) { // ESKİSİ: -0.5 -> YENİSİ: -0.8 (Çok daha nadir su)
-        terrain = 'water'; 
-        if (Math.random() > 0.7) { resource = 'fish'; amount = 1500; } 
-    } else if (noise > 0.95) { // ESKİSİ: 0.6 -> YENİSİ: 0.8 (Çok daha nadir dağ)
-        terrain = 'mountain'; 
-        if (Math.random() > 0.6) { resource = 'stone'; amount = 2500; } 
-    } else if (noise > 0.3) { 
-        terrain = 'forest'; 
-        if (Math.random() > 0.5) { resource = 'wood'; amount = 1000; } 
-    } else if (noise > 0.0) {
-        terrain = 'plains';
-        if (Math.random() > 0.7) { resource = 'grain'; amount = 800; }
-    } else if (noise < -0.3) {
-        terrain = 'swamp';
-        if (Math.random() > 0.8) { resource = 'meat'; amount = 600; }
-    }
-    
-    return new Tile(x, y, name, terrain, resource, amount);
-};
-*/
-
-
-// =======================================================================
-// NİHAİ HARİTA ÜRETİMİ (KONTROLLÜ RASTGELELİK + GÜVENLİ BAŞLANGIÇ)
-// =======================================================================
 
 Game.prototype.generateMap = function() {
     console.log(`Generating map with a variable-sized gulf...`);
@@ -1306,6 +1389,7 @@ Game.prototype.generateTile = function(x, y) {
     // Yukarıdaki koşulların hiçbiri sağlanmazsa, varsayılan araziyi döndür.
     return new Tile(x, y, name, 'grass');
 };
+
 Game.prototype.simpleNoise = function(x, y) { 
     const s = Math.sin(x*12.9898+y*78.233)*43758.5453; 
     return (s-Math.floor(s))*2-1; 
@@ -1323,11 +1407,18 @@ Game.prototype.createUnits = function() {
      // YENİ: Oyun başında AI kralının etrafını keşfet
     this.fogOfWar.exploreArea(ax, ay, 4); // 4 karelik bir yarıçapta
     
+    // NEW: Initialize fog of war for human starting area
+    this.fogOfWar.exploreArea(hx, hy, 6); // 6 tile radius around human king
+    
     // Create initial workers
     this.units.push(new Worker(hx - 1, hy - 1, 'human', this));
     this.units.push(new Worker(hx + 1, hy - 1, 'human', this));
     this.units.push(new Worker(ax - 1, ay + 1, 'ai', this));
     this.units.push(new Worker(ax + 1, ay + 1, 'ai', this));
+    
+    // NEW: Update fog of war after creating units
+    this.fogOfWar.update(this.units);
+    
 // ==========================================================
     // YENİ: ZORLUK SEVİYESİNE GÖRE AI'A BONUS BİRİMLER VER
     // ==========================================================
@@ -1372,19 +1463,50 @@ Game.prototype.render = function() {
     }
     
     
-    // Render tiles
+    // Render tiles with fog of war
     for (let y = 0; y < this.mapHeight; y++) { 
         for (let x = 0; x < this.mapWidth; x++) { 
             const tile = this.map[x][y];
             const screenPos = this.tileToScreen(x, y); 
             if (screenPos.x > -this.tileSize.width && screenPos.x < this.canvas.width && 
                 screenPos.y > -this.tileSize.height && screenPos.y < this.canvas.height + this.tileSize.height) { 
-                const image = this.imageManager.getImage(tile.terrainType); 
-                if (image && image.complete && image.naturalWidth > 0) 
-                    this.ctx.drawImage(image, screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height); 
+                
+                const fogState = this.fogOfWar.getState(x, y);
+                
+                // Only render tiles that have been explored (state 1 or 2)
+                if (fogState > 0) {
+                    let image;
+                    // NEW: Use animated water frames for water tiles
+                    if (tile.terrainType === 'water') {
+                        image = this.imageManager.getCurrentWaterFrame();
+                    } else {
+                        image = this.imageManager.getImage(tile.terrainType);
+                    }
+                    
+                    if (image && image.complete && image.naturalWidth > 0) {
+                        this.ctx.drawImage(image, screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height);
+                        
+                        // NEW: Apply fog overlay for explored but not visible tiles
+                        if (fogState === 1) {
+                            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                            this.drawIsometricTile(screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height);
+                        }
+                    }
+                }
             }
         }
     }
+    
+    // NEW: Render treasure chests (only if visible)
+    this.treasureChests.forEach(chest => {
+        if (!chest.isOpened && this.fogOfWar.getState(chest.x, chest.y) === 2) {
+            const screenPos = this.tileToScreen(chest.x, chest.y);
+            const chestImage = this.imageManager.getImage('chest');
+            if (chestImage && chestImage.complete && chestImage.naturalWidth > 0) {
+                this.ctx.drawImage(chestImage, screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height);
+            }
+        }
+    });
     
     // Render possible moves
     this.possibleMoves.forEach(move => { 
@@ -1393,13 +1515,16 @@ Game.prototype.render = function() {
         this.drawIsometricTile(screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height); 
     });
     
-    // Render units
+    // Render units (only if visible)
     this.units.sort((a, b) => (a.x + a.y) - (b.x + b.y)).forEach(unit => { 
-        const screenPos = this.tileToScreen(unit.x, unit.y); 
-        let imageName = unit.type === 'king' ? `castle_${unit.owner}` : `${unit.type}_${unit.owner}`; 
-        const image = this.imageManager.getImage(imageName); 
-        if (image && image.complete && image.naturalWidth > 0) 
-            this.ctx.drawImage(image, screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height); 
+        // NEW: Only render units that are visible (not in fog)
+        if (this.fogOfWar.getState(unit.x, unit.y) === 2 || unit.owner === 'human') {
+            const screenPos = this.tileToScreen(unit.x, unit.y); 
+            let imageName = unit.type === 'king' ? `castle_${unit.owner}` : `${unit.type}_${unit.owner}`; 
+            const image = this.imageManager.getImage(imageName); 
+            if (image && image.complete && image.naturalWidth > 0) 
+                this.ctx.drawImage(image, screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height); 
+        }
     });
     
     // Render selection highlight
@@ -1438,8 +1563,6 @@ Game.prototype.drawMoveLog = function() {
         currentTime - msg.creationTime < messageLifetime
     );
 
-    //const startY = this.canvas.height - 30; // Başlangıç Y pozisyonu (ekranın altı)
-    //const lineHeight = 20;
     // --- DEĞİŞİKLİK BURADA ---
     const startX = 20; // Sol kenardan boşluk
     const startY = 30; // Üst kenardan başlangıç pozisyonu
@@ -1460,10 +1583,7 @@ Game.prototype.drawMoveLog = function() {
         const [r, g, b] = msg.color.match(/\d+/g); // Renk bileşenlerini al
         this.ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
         
-        //this.ctx.fillText(msg.text, this.canvas.width - 20, startY - (index * lineHeight));
-        // Yazıyı ekranın solundan 20 piksel içeride başlat
-       // this.ctx.fillText(msg.text, 20, startY - (index * lineHeight));
-       // --- DEĞİŞİKLİK BURADA ---
+        // --- DEĞİŞİKLİK BURADA ---
         // Yazıyı sol üstten başlayarak aşağı doğru sırala
         this.ctx.fillText(msg.text, startX, startY + (index * lineHeight));
     });
@@ -1685,64 +1805,31 @@ this.canvas.addEventListener('wheel', (e) => {
     document.getElementById('produceQueen').addEventListener('click', () => this.buildingSystem.produceUnit('queen', 'human'));
 };
 
-/*Game.prototype.handleTileClick = function(x, y) {
-    if (this.currentPlayer !== 'human' || this.gameState !== 'playing') return;
-    
-    const unitOnTile = this.getUnitAt(x, y);
-    if (this.selectedUnit) {
-        const move = this.possibleMoves.find(m => m.x === x && m.y === y);
-        if (move) { 
-            if (move.type === 'attack') 
-                this.executeAttack(this.selectedUnit, unitOnTile); 
-            else 
-                this.selectedUnit.moveTo(x, y); 
-            this.deselectUnit(); 
-        } else { 
-            this.deselectUnit(); 
-            if (unitOnTile && unitOnTile.owner === 'human' && !unitOnTile.hasActed && unitOnTile.type !== 'king') 
-                this.selectUnit(unitOnTile); 
-        }
-    } else if (unitOnTile && unitOnTile.owner === 'human' && !unitOnTile.hasActed && unitOnTile.type !== 'king') { 
-        this.selectUnit(unitOnTile); 
-    }
-};
-*/
-// handleTileClick fonksiyonunu bulun ve bu daha basit versiyonla değiştirin
-
-/*Game.prototype.handleTileClick = function(x, y) {
-    if (this.currentPlayer !== 'human' || this.gameState !== 'playing') return;
-    
-    const unitOnTile = this.getUnitAt(x, y);
-
-    // Seçili birim varken bir hamle yapılıyor
-    if (this.selectedUnit) {
-        const move = this.possibleMoves.find(m => m.x === x && m.y === y);
-        if (move) { 
-            if (move.type === 'attack') {
-                this.executeAttack(this.selectedUnit, unitOnTile); 
-            } else {
-                this.selectedUnit.moveTo(x, y); 
-            }
-            this.deselectUnit(); 
-        } else { 
-            // Geçersiz bir hamle yapıldı, seçimi iptal et ve belki yeni birim seç
-            this.deselectUnit(); 
-            if (unitOnTile && unitOnTile.owner === 'human' && !unitOnTile.hasActed) {
-                this.selectUnit(unitOnTile); 
-            }
-        }
-    } 
-    // Hiçbir birim seçili değilken tıklanıyor
-    else if (unitOnTile && unitOnTile.owner === 'human' && !unitOnTile.hasActed) {
-        // Tıklanan birim hareket edebiliyorsa seç (artık Kral da dahil)
-        this.selectUnit(unitOnTile); 
-    }
-};
-*/
 Game.prototype.handleTileClick = function(x, y) {
     if (this.currentPlayer !== 'human' || this.gameState !== 'playing') return;
     
     const unitOnTile = this.getUnitAt(x, y);
+    const chestOnTile = this.getChestAt(x, y);
+
+    // NEW: Check for treasure chest interaction
+    if (chestOnTile && this.selectedUnit && this.selectedUnit.type === 'worker') {
+        // Worker is trying to open a chest
+        const move = this.possibleMoves.find(m => m.x === x && m.y === y);
+        if (move && move.type === 'move') {
+            // Move to chest and open it
+            this.selectedUnit.moveTo(x, y);
+            this.handleChestInteraction(x, y, this.selectedUnit);
+            this.deselectUnit();
+            this.hideUnitDialog();
+            return;
+        }
+    }
+    
+    // Check if clicking on a chest with non-worker unit
+    if (chestOnTile && this.selectedUnit && this.selectedUnit.type !== 'worker') {
+        this.showChestWorkerOnlyDialog();
+        return;
+    }
 
     // Seçili birim varken bir hamle yapılıyor
     if (this.selectedUnit) {
@@ -1836,6 +1923,13 @@ Game.prototype.getTileTargetInfo = function(x, y, attackerOwner) {
     const tile = this.map[x][y];
     if (!tile.canWalkOn()) return {isValid: false}; 
     const unitOnTile = this.getUnitAt(x, y);
+    const chestOnTile = this.getChestAt(x, y);
+    
+    // NEW: Allow movement to chest tiles
+    if (chestOnTile && !unitOnTile) {
+        return { isValid: true, type: 'move' };
+    }
+    
     if (unitOnTile) { 
         return { isValid: unitOnTile.owner !== attackerOwner, type: 'attack' }; 
     }
@@ -1859,13 +1953,6 @@ Game.prototype.screenToWorld = function(screenX, screenY) {
     return { x: screenX - this.canvas.width / 2 + this.camera.x, y: screenY - this.canvas.height / 2 + this.camera.y }; 
 };
 
-/*Game.prototype.worldToTile = function(worldX, worldY) {
-    const tileX = Math.round((worldX / (this.tileSize.width / 2) + worldY / (this.tileSize.height / 2)) / 2);
-    const tileY = Math.round((worldY / (this.tileSize.height / 2) - worldX / (this.tileSize.width / 2)) / 2);
-    if (this.isValidTile(tileX, tileY)) return { x: tileX, y: tileY };
-    return null;
-};
-*/
 // =======================================================================
 // KOORDİNAT SİSTEMİ - YARIM KARO OFSET DÜZELTMESİ
 // =======================================================================
