@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tunç Alıcıoğlu's Chessforge 1.0.2</title>
+    <title>Tunç Alıcıoğlu's Chessforge</title>
     <style>
         body, html {
             margin: 0;
@@ -16,7 +16,6 @@
             font-family: 'Garamond', 'Times New Roman', serif;
         }
         
-        /* Tüm ekranı kaplayan genel konteyner */
         .menu-container {
             display: flex;
             justify-content: center;
@@ -24,27 +23,36 @@
             flex-direction: column;
             height: 100%;
             text-align: center;
-            background: radial-gradient(ellipse at center, rgba(13, 26, 38, 0.7) 0%, rgba(13, 26, 38, 1) 100%);
+            background: radial-gradient(ellipse at center, rgba(13, 26, 38, 0.6) 0%, rgba(13, 26, 38, 1) 90%);
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            transition: opacity 0.5s ease-in-out;
+            transition: opacity 0.7s ease-in-out;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        
+        #game-logo {
+            max-width: 90%;
+            width: 550px;
+            height: auto;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 0 15px rgba(243, 156, 18, 0.5));
         }
 
-        /* Video Penceresi Stili */
         .video-window {
-            width: 60vw;
-            max-width: 800px;
-            height: 33.75vw;
-            max-height: 450px;
+            width: 550px;
+            max-width: 90%;
+            height: 310px;
             border: 3px solid #f39c12;
-            border-radius: 10px;
+            border-radius: 5px;
             overflow: hidden;
             margin-bottom: 30px;
-            box-shadow: 0 0 30px rgba(243, 156, 18, 0.4);
+            box-shadow: 0 0 25px rgba(243, 156, 18, 0.4);
             position: relative;
-            background-color: #000; /* Video yüklenemezse siyah görünsün */
+            background-color: #000;
         }
         .video-window video {
             width: 100%;
@@ -52,45 +60,86 @@
             object-fit: cover;
         }
 
-        h1 {
-            font-size: 3em;
+        h1, h2, h3 {
             text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.7);
-            margin-bottom: 20px;
             color: #e0e0e0;
         }
-        h1 strong {
-             color: #f39c12;
+        h1 { font-size: 3em; margin-bottom: 20px; }
+        h3 { font-size: 1.8em; margin-bottom: 10px; }
+        
+        .menu-options { 
+            list-style: none; 
+            padding: 0;
+            margin-top: 0;
+        }
+        .menu-options li { 
+            margin: 18px 0; 
+        }
+
+        .menu-button { 
+            font-family: 'Garamond', 'Times New Roman', serif; 
+            font-size: 1.6em; 
+            letter-spacing: 1px;
+            color: #ecf0f1; 
+            background-color: rgba(10, 20, 30, 0.5);
+            border: 2px solid rgba(243, 156, 18, 0.7);
+            padding: 12px 0;
+            cursor: pointer; 
+            transition: all 0.4s ease; 
+            text-decoration: none; 
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            display: inline-block;
+            width: 320px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        .menu-button:hover { 
+            background-color: #f39c12; 
+            border-color: #ffffff; 
+            color: #0d1a26;
+            text-shadow: none;
+            box-shadow: 0 0 25px rgba(243, 156, 18, 0.8);
+            transform: scale(1.03);
         }
         
-        .menu-options { list-style: none; padding: 0; }
-        .menu-options li { margin: 15px 0; }
-        .menu-button { font-family: 'Garamond', 'Times New Roman', serif; font-size: 1.5em; color: #ecf0f1; background: none; border: 2px solid #ecf0f1; padding: 8px 35px; cursor: pointer; transition: all 0.3s ease; text-decoration: none; }
-        .menu-button:hover { background-color: #f39c12; border-color: #f39c12; color: #000; }
-        
-        /* Giriş Ekranı Stilleri */
         #enter-screen h2 { font-size: 2.5em; margin-bottom: 10px; }
         #enter-screen p { font-size: 1.2em; color: #bdc3c7; margin-bottom: 30px; }
         #enter-button {
             font-size: 2em;
-            padding: 15px 50px;
+            padding: 15px 0;
             animation: pulse 2s infinite;
         }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        @keyframes pulse { 
+            0% { transform: scale(1); box-shadow: 0 0 25px rgba(243, 156, 18, 0.5); } 
+            50% { transform: scale(1.05); box-shadow: 0 0 35px rgba(243, 156, 18, 0.9); } 
+            100% { transform: scale(1); box-shadow: 0 0 25px rgba(243, 156, 18, 0.5); } 
+        }
         
-        /* Gizleme/Gösterme için yardımcı sınıf */
         .hidden {
             opacity: 0;
-            pointer-events: none; /* Gizliyken tıklanamaz yap */
+            pointer-events: none;
+        }
+
+        /* YENİ: Footer/Credits Stili */
+        #credits {
+            position: fixed;
+            bottom: 10px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 0.8em;
+            color: rgba(236, 240, 241, 0.35); /* Çok silik renk */
+            letter-spacing: 1px;
+            pointer-events: none; /* Üzerine tıklanmasını engeller */
+            transition: opacity 0.7s ease-in-out;
+            z-index: 10;
         }
     </style>
 </head>
 <body>
 
-    <video autoplay muted loop id="background-video">
-        <source src="background.mp4" type="video/mp4">
-    </video>
-
-    <!-- GİRİŞ EKRANI -->
+    <!-- Giriş Ekranı -->
     <div id="enter-screen" class="menu-container">
         <div>
             <h2>Welcome</h2>
@@ -99,17 +148,22 @@
         </div>
     </div>
 
-    <!-- ANA MENÜ (Başlangıçta gizli) -->
+    <!-- Ana Menü -->
     <div id="main-menu" class="menu-container hidden">
-        <h1><strong>Tunç Alıcıoğlu's</strong><br>Chessforge 1.0.2</h1>
+        <img src="chessforfeLogoWhite.png" alt="Chessforge Logo" id="game-logo">
+        <div class="video-window">
+            <video autoplay muted loop playsinline id="menu-video">
+                <source src="background.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
         <ul class="menu-options">
             <li><a href="game.html" class="menu-button" id="startGameBtn">Single Game</a></li>
-            <li><button class="menu-button disabled">Multiplayer (Soon)</button></li>
             <li><button id="optionsBtn" class="menu-button">Options</button></li>
         </ul>
     </div>
 
-    <!-- YENİ: SEÇENEKLER MENÜSÜ (Başlangıçta gizli) -->
+    <!-- Seçenekler Menüsü -->
     <div id="options-menu" class="menu-container hidden">
         <h1>Options</h1>
         <h3>Select Difficulty</h3>
@@ -118,9 +172,14 @@
             <li><button class="menu-button difficulty-btn" data-difficulty="hard">Hard</button></li>
             <li><button class="menu-button difficulty-btn" data-difficulty="pro">Professional</button></li>
         </ul>
-        <button id="backBtn" class="menu-button" style="margin-top: 30px; border-color: #e74c3c;">Back</button>
+        <button id="backBtn" class="menu-button" style="margin-top: 40px; border-color: #c0392b;">Back</button>
     </div>
     
+    <!-- YENİ: Footer elementi (başlangıçta gizli) -->
+    <footer id="credits" class="hidden">
+        <p>Game & Music by Tunç Alıcıoğlu | v1.0.2</p>
+    </footer>
+
     <audio id="mainMenuMusic" loop>
         <source src="mainGameMusic.mp3" type="audio/mpeg">
     </audio>
@@ -131,21 +190,22 @@
         const mainMenu = document.getElementById('main-menu');
         const optionsMenu = document.getElementById('options-menu');
         const music = document.getElementById('mainMenuMusic');
-        const video = document.getElementById('main-video'); // Eğer video id'niz buysa
+        const video = document.getElementById('menu-video');
+        const creditsFooter = document.getElementById('credits'); // GÜNCELLENDİ
 
-        // Ana Menü Butonları
+        enterButton.addEventListener('click', () => {
+            music.play().catch(error => console.error("Music play failed:", error));
+            video.play().catch(error => console.error("Video play failed:", error));
+
+            enterScreen.classList.add('hidden');
+            mainMenu.classList.remove('hidden');
+            creditsFooter.classList.remove('hidden'); // GÜNCELLENDİ: Credits'i göster
+        });
+
         const startGameBtn = document.getElementById('startGameBtn');
         const optionsBtn = document.getElementById('optionsBtn');
         const backBtn = document.getElementById('backBtn');
-        
-        enterButton.addEventListener('click', () => {
-            music.play().catch(error => console.error("Music play failed:", error));
-            // video.play().catch(error => console.error("Video play failed:", error));
-            enterScreen.classList.add('hidden');
-            mainMenu.classList.remove('hidden');
-        });
 
-        // Menüler arası geçiş
         optionsBtn.addEventListener('click', () => {
             mainMenu.classList.add('hidden');
             optionsMenu.classList.remove('hidden');
@@ -156,23 +216,25 @@
             mainMenu.classList.remove('hidden');
         });
 
-        // Zorluk seviyesini saklama
         document.querySelectorAll('.difficulty-btn').forEach(button => {
             button.addEventListener('click', () => {
                 const difficulty = button.getAttribute('data-difficulty');
-                // Seçimi tarayıcının hafızasında sakla (localStorage)
                 localStorage.setItem('gameDifficulty', difficulty);
-                alert(`Difficulty set to: ${difficulty.toUpperCase()}`);
-                // Geri dön
-                optionsMenu.classList.add('hidden');
-                mainMenu.classList.remove('hidden');
+                button.style.borderColor = '#2ecc71';
+                button.textContent = `${difficulty.toUpperCase()} SET`;
+                
+                setTimeout(() => {
+                    optionsMenu.classList.add('hidden');
+                    mainMenu.classList.remove('hidden');
+                    button.style.borderColor = '';
+                    button.textContent = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+                }, 800);
             });
         });
 
-        // Oyunu başlatırken zorluk seviyesini URL'e ekle
         startGameBtn.addEventListener('click', (e) => {
-            e.preventDefault(); // Normal link davranışını engelle
-            const difficulty = localStorage.getItem('gameDifficulty') || 'easy'; // Varsayılan: easy
+            e.preventDefault();
+            const difficulty = localStorage.getItem('gameDifficulty') || 'easy';
             window.location.href = `game.html?difficulty=${difficulty}`;
         });
     </script>
