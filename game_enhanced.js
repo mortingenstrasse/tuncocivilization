@@ -633,7 +633,7 @@ function Game() {
     // YENİ: Zorluk seviyesi değişkeni
     this.difficulty = 'easy'; // Varsayılan değer
     // MÜZİK İÇİN YENİ DEĞİŞKENLER
-    this.musicPlaylist = ['GameMusic2.mp3', 'GameMusic3.mp3', 'GameMusic4.mp3'];
+    this.musicPlaylist = ['GameMusic2.mp3', 'GameMusic3.mp3', 'GameMusic4.mp3', 'GameMusic5.mp3'];
     this.currentTrackIndex = 0;
     this.audioElement = new Audio();
     // YENİ: Kar efekti için
