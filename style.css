@@ -1,85 +1,116 @@
+/* Reset and Base Styles */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-/* style.css */
-
-body {
-    /* Bu satırları değiştirin/ekleyin */
+/* Mobile Warning */
+.mobile-warning {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
-    /* Değişiklikler burada bitiyor */
+    z-index: 10000;
+    color: #d4af37;
+}
 
-    font-family: 'Arial', sans-serif;
-    background: linear-gradient(135deg, #2c3e50, #34495e);
-    color: #ecf0f1;
+.warning-content {
+    background: linear-gradient(135deg, #2c1810, #3d2317);
+    border: 3px solid #d4af37;
+    border-radius: 15px;
+    padding: 30px;
+    text-align: center;
+    max-width: 400px;
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.3);
+}
+
+.warning-content h2 {
+    font-family: 'Seagram', serif;
+    font-size: 28px;
+    margin-bottom: 20px;
+    color: #d4af37;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.warning-content p {
+    margin-bottom: 15px;
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+.warning-content button {
+    background: linear-gradient(135deg, #d4af37, #b8941f);
+    color: #2c1810;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.warning-content button:hover {
+    background: linear-gradient(135deg, #b8941f, #d4af37);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
+}
+
+/* Body and Main Container */
+body {
+    margin: 0;
+    padding: 0;
+    background: #1a1a1a;
+    font-family: 'Seagram', 'Times New Roman', serif;
+    color: #d4af37;
     overflow: hidden;
 }
 
 #gameContainer {
-    /* BU SATIRLARI TAMAMEN SİLİN veya YORUM SATIRI YAPIN */
-    /* display: flex; */
-    /* flex-direction: column; */
-    /* height: 100vh; */
-    /* width: 100vw; */
-    
-    /* YERİNE BUNU EKLEYİN */
-    position: relative; /* Tıklama animasyonu için gerekli */
-    box-shadow: 0 0 20px rgba(0,0,0,0.5);
-    /* Bitti */
-}
-
-/* gameUI ve topBar stillerini şimdilik yoruma alın veya silin, çünkü container yapısını değiştirdik */
-/* #gameUI { ... } */
-/* #topBar { ... } */
-
-
-#gameCanvas {
-    /* BU SATIRI SİLİN veya YORUM SATIRI YAPIN */
-    /* flex: 1; */
-    
-    /* Geri kalanı aynı kalabilir */
-    background: #34495e;
-    border: 2px solid #2c3e50;
-    cursor: url('cursor.cur'), auto; 
-}
-
-/* ... geri kalan stilleriniz ... */
-
-#gameContainer {
     display: flex;
-    flex-direction: column;
     height: 100vh;
-    width: 100vw;
 }
 
-/* Top UI Bar */
+/* Game UI Header */
 #gameUI {
-    background: rgba(44, 62, 80, 0.95);
-    border-bottom: 2px solid #3498db;
-    padding: 10px 20px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: #000000;
+    border-bottom: 3px solid #d4af37;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 
 #topBar {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 10px 20px;
 }
 
 #gameInfo {
     display: flex;
     gap: 20px;
-    font-size: 16px;
     font-weight: bold;
 }
 
 #gameInfo span {
-    color: #3498db;
+    background: #000000;
+    border: 2px solid #d4af37;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: 'Seagram', serif;
+    font-size: 16px;
+    color: #d4af37;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 #resourceDisplay {
@@ -91,555 +122,131 @@ body {
     display: flex;
     align-items: center;
     gap: 5px;
-    background: rgba(52, 152, 219, 0.2);
-    padding: 5px 10px;
-    border-radius: 5px;
-    border: 1px solid #3498db;
+    background: #000000;
+    border: 2px solid #d4af37;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #d4af37;
+    min-width: 70px;
 }
 
 .resource-icon {
-    font-size: 18px;
+    font-size: 16px;
 }
 
-.resource span:last-child {
+/* Population Display */
+#populationDisplay {
+    background: #000000 !important;
+    border: 2px solid #d4af37 !important;
+    color: #d4af37 !important;
+    padding: 8px 16px;
+    border-radius: 8px;
     font-weight: bold;
-    color: #f39c12;
-    min-width: 30px;
-    text-align: right;
+    margin-left: 0;
 }
 
+/* Game Canvas */
+#gameCanvas {
+    border: 3px solid #d4af37;
+    background: #000;
+    cursor: grab;
+    margin-top: 60px;
+   
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+}
 
+#gameCanvas:active {
+    cursor: grabbing;
+}
 
-/* Game Controls */
+/* Game Controls Panel */
 #gameControls {
-    position: fixed;
-    right: 10px;
-    top: 80px;
-    width: 250px;
-    background: rgba(44, 62, 80, 0.95);
-    border: 2px solid #3498db;
-    border-radius: 10px;
-    padding: 15px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    max-height: calc(100vh - 100px);
+    
+    background-image: url('menuBG.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    padding: 20px;
+    box-sizing: border-box;
     overflow-y: auto;
+    border-left: 2px solid #d4af37;
+    position: relative;
 }
 
-#gameControls h3 {
-    color: #3498db;
-    margin-bottom: 10px;
-    border-bottom: 1px solid #3498db;
-    padding-bottom: 5px;
-}
-
-#unitPanel, #actionPanel {
-    margin-bottom: 20px;
-}
-
-/* style.css dosyasındaki ilgili stilleri bulun ve değiştirin/ekleyin */
-
-#unitButtons {
-    display: flex;
-    flex-direction: column;
-    gap: 15px; /* Butonlar arasına daha fazla boşluk */
-}
-
-/* ESKİ .unit-btn STİLİNİ BUNUNLA DEĞİŞTİRİN */
-.unit-btn {
-    display: flex; /* İçerikleri yan yana dizmek için */
-    align-items: center; /* Dikey olarak ortala */
-    background: linear-gradient(135deg, #3a506b, #1c2541); /* Daha koyu bir tema */
-    color: white;
-    border: 2px solid #5bc0be; /* Turkuaz bir çerçeve */
-    padding: 10px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-align: left;
-}
-
-.unit-btn:hover {
-    border-color: #f39c12; /* Vurgu rengi */
-    transform: translateY(-3px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-}
-
-.unit-btn:disabled {
-    background: #566573;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-    opacity: 0.5;
-}
-
-/* YENİ: Buton içindeki resim stili */
-.unit-btn img {
-    width: 40px;  /* 120x120 çok büyük olur, 40x40 daha uygun */
-    height: 40px;
-    margin-right: 10px;
-    border-radius: 5px;
-    background-color: rgba(0,0,0,0.2);
-}
-
-/* YENİ: Buton içindeki metin alanı stili */
-.unit-btn .unit-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.unit-btn .unit-name {
-    font-size: 16px;
-    font-weight: bold;
-}
-
-.unit-btn .unit-cost {
-    font-size: 12px;
-    color: #bdc3c7; /* Daha soluk bir renk */
-}
-
-/* Selected Unit Info */
-#selectedUnitInfo {
-    position: fixed;
-    left: 10px;
-    top: 80px;
-    width: 250px;
-    background: rgba(44, 62, 80, 0.95);
-    border: 2px solid #e74c3c;
-    border-radius: 10px;
-    padding: 15px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-}
-
-#selectedUnitInfo h3 {
-    color: #e74c3c;
-    margin-bottom: 10px;
-    border-bottom: 1px solid #e74c3c;
-    padding-bottom: 5px;
-}
-
-#unitDetails {
-    margin-bottom: 15px;
-    font-size: 14px;
-    line-height: 1.4;
-}
-
-#unitActions {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-/* Responsive Design */
-@media (max-width: 1200px) {
-    #gameControls {
-        width: 200px;
-        font-size: 11px;
-    }
-    
-    #selectedUnitInfo {
-        width: 200px;
-        font-size: 11px;
-    }
-    
-    .unit-btn, .action-btn {
-        padding: 8px 12px;
-        font-size: 11px;
-    }
-}
-
-@media (max-width: 768px) {
-    #gameControls, #selectedUnitInfo {
-        position: relative;
-        width: 100%;
-        margin: 10px 0;
-    }
-    
-    #gameContainer {
-        flex-direction: row;
-        flex-wrap: wrap;
-    }
-    
-    #gameCanvas {
-        width: 100%;
-        height: 60vh;
-    }
-    
-    #resourceDisplay {
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-    
-    .resource {
-        font-size: 12px;
-        padding: 3px 8px;
-    }
-}
-
-/* Loading and Game States */
-.loading {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: fixed;
+/* Add overlay to make text more readable */
+#gameControls::before {
+    content: '';
+    position: absolute;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.8);
-    z-index: 1000;
-}
-
-.loading-text {
-    color: #3498db;
-    font-size: 24px;
-    font-weight: bold;
-}
-
-/* Tile Highlight Effects */
-.tile-highlight {
-    box-shadow: 0 0 10px #f39c12;
-    border: 2px solid #f39c12;
-}
-
-.tile-selected {
-    box-shadow: 0 0 15px #e74c3c;
-    border: 2px solid #e74c3c;
-}
-
-.tile-moveable {
-    box-shadow: 0 0 8px #2ecc71;
-    border: 2px solid #2ecc71;
-}
-
-
-/* Hometown Button Styling */
-.hometown-btn {
-    background: linear-gradient(135deg, #f39c12, #e67e22) !important;
-    border: 2px solid #d68910 !important;
-    color: white !important;
-    font-weight: bold !important;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.5) !important;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.3) !important;
-    transition: all 0.3s ease !important;
-}
-
-.hometown-btn:hover {
-    background: linear-gradient(135deg, #e67e22, #d35400) !important;
-    transform: translateY(-2px) !important;
-    box-shadow: 0 6px 12px rgba(0,0,0,0.4) !important;
-}
-
-.hometown-btn:active {
-    transform: translateY(0) !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
-}
-
-/* Camera Edge Indicators */
-.camera-edge-indicator {
-    position: fixed;
-    background: rgba(231, 76, 60, 0.8);
-    color: white;
-    font-weight: bold;
-    z-index: 1000;
-    pointer-events: none;
-    animation: pulse 1s infinite;
-}
-
-@keyframes pulse {
-    0% { opacity: 0.6; }
-    50% { opacity: 1.0; }
-    100% { opacity: 0.6; }
-}
-
-/* Enhanced Action Buttons */
-.action-btn {
-    margin: 2px 0;
-    padding: 8px 12px;
-    border: none;
-    border-radius: 4px;
-    background: #3498db;
-    color: white;
-    cursor: pointer;
-    font-size: 12px;
-    transition: all 0.2s ease;
-    min-width: 100px;
-}
-
-.action-btn:hover {
-    background: #2980b9;
-    transform: translateY(-1px);
-}
-
-.action-btn:active {
-    transform: translateY(0);
-}
-
-/* Click Animation Styles */
-.click-animation {
-    position: absolute;
-    border: 3px solid #f39c12;
-    border-radius: 50%;
-    pointer-events: none;
-    animation: clickRipple 0.5s ease-out;
-}
-
-@keyframes clickRipple {
-    0% {
-        transform: scale(0);
-        opacity: 1;
-    }
-    100% {
-        transform: scale(1);
-        opacity: 0;
-    }
-}
-
-/* Selection Feedback */
-.selection-highlight {
-    position: absolute;
-    border: 2px solid #f39c12;
-    background: rgba(243, 156, 18, 0.2);
-    pointer-events: none;
-    animation: selectionPulse 1s infinite;
-}
-
-@keyframes selectionPulse {
-    0% { 
-        transform: scale(1);
-        opacity: 0.6;
-    }
-    50% { 
-        transform: scale(1.1);
-        opacity: 1.0;
-    }
-    100% { 
-        transform: scale(1);
-        opacity: 0.6;
-    }
-}
-
-/* style.css dosyasının en sonuna ekleyin */
-
-/* Tıklama Animasyonu */
-.click-ripple {
-    position: absolute; /* Canvas'a göre konumlanacak */
-    border: 3px solid rgba(255, 215, 0, 0.8); /* Altın sarısı */
-    border-radius: 50%;
-    transform: scale(0);
-    animation: ripple 0.6s linear;
-    pointer-events: none; /* Tıklamaları engellememesi için */
-}
-
-@keyframes ripple {
-    to {
-        transform: scale(4);
-        opacity: 0;
-    }
-}
-
-/* Bilgi Paneli */
-#tileInfoPanel {
-    position: fixed;
-    bottom: 10px;
-    left: 10px;
-    background: rgba(44, 62, 80, 0.9);
-    color: #ecf0f1;
-    padding: 15px;
-    border-radius: 8px;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 14px;
-    white-space: pre-wrap; /* \n karakterlerinin çalışmasını sağlar */
-    z-index: 1000;
-    border: 2px solid #3498db;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-}
-
-/* style.css dosyasının en sonuna ekleyin */
-
-/* Müzik Player */
-#music-player {
-    position: fixed;
+    right: 0;
     bottom: 0;
-    left: 0;
-    width: 100%;
-    background-color: rgba(20, 30, 40, 0.9);
-    border-top: 1px solid #3498db;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px;
-    z-index: 100;
+    
+    pointer-events: none;
 }
 
-#song-info {
-    margin-right: 20px;
-    font-size: 14px;
-    color: #bdc3c7;
+#gameControls > * {
+    position: relative;
+    z-index: 1;
 }
 
-#volume-slider {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 200px;
-    height: 8px;
-    background: #566573;
-    outline: none;
-    opacity: 0.7;
-    -webkit-transition: .2s;
-    transition: opacity .2s;
-    border-radius: 5px;
-}
-
-#volume-slider:hover {
-    opacity: 1;
-}
-
-#volume-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    background: #3498db;
-    cursor: pointer;
-    border-radius: 50%;
-}
-
-#volume-slider::-moz-range-thumb {
-    width: 18px;
-    height: 18px;
-    background: #3498db;
-    cursor: pointer;
-    border-radius: 50%;
-}
-
-/* Pop-up Arkaplanı */
-#info-popup-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.7); /* Yarı saydam siyah arkaplan */
-    z-index: 10000; /* Her şeyin üzerinde olmasını sağlar */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-/* Pop-up Penceresi */
-#info-popup-box {
-    background: linear-gradient(135deg, #34495e, #2c3e50);
-    color: #ecf0f1;
-    padding: 30px;
-    border-radius: 15px;
-    width: 90%;
-    max-width: 600px;
-    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
-    border: 2px solid #3498db;
-    font-family: Arial, sans-serif;
-}
-
-#info-popup-box h2 {
-    color: #f39c12;
-    margin-top: 0;
-    margin-bottom: 20px;
+/* Logo Container */
+#logoContainer {
     text-align: center;
-    font-size: 24px;
+    margin-bottom: 20px;
+    padding-top: 50px;
 }
 
-#info-popup-box p {
-    margin-bottom: 12px;
-    line-height: 1.6;
-    font-size: 16px;
+#gameLogo {
+    max-width: 200px;
+    height: auto;
+    filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.5));
 }
 
-#info-popup-box ul {
-    list-style: none;
-    padding-left: 0;
+/* End Turn Button */
+#end-turn-container {
     margin-bottom: 20px;
 }
 
-#info-popup-box li {
-    margin-bottom: 8px;
-}
-
-#info-popup-box strong {
-    color: #3498db;
-}
-
-/* Kapatma Butonu */
-#close-popup-btn {
-    display: block;
-    width: 150px;
-    padding: 12px 20px;
-    margin: 20px auto 0 auto;
-    background-color: #e74c3c;
-    color: white;
-    border: none;
-    border-radius: 5px;
+.end-turn-btn {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #2c1810, #3d2317);
+    color: #d4af37;
+    border: 3px solid #d4af37;
+    border-radius: 15px;
     font-size: 16px;
     font-weight: bold;
     cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-#close-popup-btn:hover {
-    background-color: #c0392b;
-}
-
-/* style.css dosyasında ilgili stilleri bulun ve değiştirin */
-
-/* End Turn Butonu Konteyneri */
-#end-turn-container {
-    /* Artık position: fixed veya absolute değil, normal bir div */
-    margin-bottom: 20px; /* Altındaki "Units" başlığıyla arasına boşluk koyar */
-}
-
-/* End Turn Butonunun Kendisi (Yeni Gradient ve Stil) */
-.end-turn-btn {
     display: flex;
     align-items: center;
-    justify-content: center; /* İçeriği ortala */
-    width: 100%; /* Panelin tamamını kaplasın */
-    
-    /* YENİ DİKKAT ÇEKİCİ GRADIENT */
-    background: linear-gradient(45deg, #28a745, #218838); /* Canlı Yeşil */
-    
-    color: white;
-    border: 2px solid #1e7e34; /* Koyu yeşil çerçeve */
-    border-radius: 12px; /* Daha belirgin yuvarlak kenarlar */
-    padding: 12px 20px;
-    font-family: Arial, sans-serif;
-    cursor: pointer;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2);
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
-    transition: all 0.2s ease-in-out;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+    font-family: 'Seagram', serif;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
 }
 
-.end-turn-btn:hover {
-    background: linear-gradient(45deg, #218838, #1e7e34);
+.end-turn-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #3d2317, #4a2a1c);
     transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.2);
-}
-
-.end-turn-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.3);
 }
 
 .end-turn-btn:disabled {
     background: #5a6268;
     border-color: #4e555b;
     cursor: not-allowed;
+    opacity: 0.6;
     transform: none;
     box-shadow: none;
-    opacity: 0.6;
 }
 
-/* Buton İçindeki İkon ve Metinler (ufak ayarlar) */
 .end-turn-btn .icon {
     font-size: 22px;
-    margin-right: 12px;
     line-height: 1;
 }
 
@@ -659,33 +266,187 @@ body {
     opacity: 0.9;
 }
 
-/* style.css dosyasındaki #unit-dialog stilini bulun ve değiştirin */
+/* Unit and Building Panels */
+#unitPanel, #buildingPanel {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: rgba(44, 24, 16, 0.8);
+    border-radius: 10px;
+    border: 2px solid #d4af37;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
 
-/* Birim Diyalog Kutusu Konteyneri */
+#unitPanel h3, #buildingPanel h3 {
+    margin: 0 0 15px 0;
+    color: #d4af37;
+    font-size: 16px;
+    border-bottom: 2px solid #d4af37;
+    padding-bottom: 8px;
+    font-family: 'Seagram', serif;
+    text-align: center;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Two Column Layout for Units and Buildings */
+#unitButtons, #buildingButtons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+/* Unit and Building Buttons */
+.unit-btn, .building-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background: linear-gradient(135deg, rgba(44, 24, 16, 0.9), rgba(61, 35, 23, 0.9));
+    color: #d4af37;
+    border: 2px solid #8b7355;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    text-align: left;
+}
+
+.unit-btn:hover:not(:disabled), .building-btn:hover:not(:disabled) {
+    border-color: #d4af37;
+    background: linear-gradient(135deg, rgba(61, 35, 23, 0.9), rgba(74, 42, 28, 0.9));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+}
+
+.unit-btn:disabled, .building-btn:disabled {
+    background: #5a6268;
+    border-color: #4e555b;
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
+}
+
+.unit-btn img, .building-btn img {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    border: 1px solid #8b7355;
+}
+
+.unit-info, .building-info {
+    flex: 1;
+}
+
+.unit-name, .building-name {
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 2px;
+    color: #d4af37;
+    display: block;
+}
+
+.unit-cost, .building-cost {
+    font-size: 12px;
+    opacity: 0.9;
+    color: #b8941f;
+    line-height: 1.2;
+}
+
+/* Action Panel */
+#actionPanel {
+    padding: 15px;
+    background: rgba(44, 24, 16, 0.8);
+    border-radius: 10px;
+    border: 2px solid #d4af37;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.action-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #2c1810, #3d2317);
+    color: #d4af37;
+    border: 2px solid #d4af37;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-bottom: 10px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+    background: linear-gradient(135deg, #3d2317, #4a2a1c);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+}
+
+/* Music Player */
+#music-player {
+    
+    background: rgba(44, 24, 16, 0.9);
+    padding: 4px;
+    border-radius: 10px;
+    border: 2px solid #d4af37;
+    min-width: 200px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+#song-info {
+    font-size: 12px;
+    color: #d4af37;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+#volume-slider {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: #8b7355;
+    outline: none;
+    border-radius: 3px;
+}
+
+#volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: #d4af37;
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+#volume-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: #d4af37;
+    cursor: pointer;
+    border-radius: 50%;
+    border: none;
+}
+
+/* Unit Dialog Styles */
 #unit-dialog {
     position: fixed;
     bottom: 20px;
     left: 20px;
-    width: 450px; /* Biraz daha geniş */
-    height: 200px; /* Biraz daha kısa */
-    z-index: 100;
-    pointer-events: none;
-    
-    /* Animasyon için başlangıç durumu */
-    opacity: 0;
-    transform: translateY(20px);
-    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
-    
-    /* YENİ: İçerik için Flexbox */
+    background: linear-gradient(135deg, #2c1810, #3d2317);
+    color: #d4af37;
+    padding: 20px;
+    border-radius: 12px;
+    border: 3px solid #d4af37;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
     display: flex;
     align-items: center;
-    padding: 20px;
-    
-    /* YENİ: Arkaplan ve Çerçeve */
-    background: rgba(44, 62, 80, 0.9); /* Yarı saydam koyu mavi */
-    border-radius: 15px;
-    border-top: 2px solid #f39c12; /* Üstte turuncu bir çizgi */
-    box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+    gap: 15px;
+    max-width: 400px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    z-index: 1000;
 }
 
 #unit-dialog.visible {
@@ -693,56 +454,327 @@ body {
     transform: translateY(0);
 }
 
-/* Diyalog kutusunun içindeki resim (Portre) */
-#unit-dialog img.portrait {
-    width: 150px;
-    height: 150px;
-    object-fit: cover;
+#unit-dialog .portrait {
+    width: 64px;
+    height: 64px;
     border-radius: 8px;
-    margin-right: 20px;
-    border: 2px solid #566573;
+    border: 2px solid #d4af37;
 }
 
-/* Diyalog kutusunun içindeki metin alanı */
 #unit-dialog .text-area {
-    color: #ecf0f1;
-    font-family: 'Garamond', serif;
+    flex: 1;
 }
 
 #unit-dialog .unit-name {
-    font-size: 24px;
+    font-size: 16px;
     font-weight: bold;
-    color: #f39c12;
-    margin-bottom: 10px;
+    color: #d4af37;
+    margin-bottom: 5px;
+    font-family: 'Seagram', serif;
 }
 
 #unit-dialog .message {
-    font-size: 18px;
+    font-size: 14px;
     font-style: italic;
+    color: #b8941f;
+    margin-bottom: 10px;
 }
-/* style.css dosyasının en sonuna ekleyin */
-/* style.css dosyasında .income-info stilini bulun ve değiştirin */
 
 #unit-dialog .income-info {
-    font-size: 13px;
-    color: #bdc3c7; /* Daha okunabilir bir renk */
-    margin-top: 15px;
-    padding-top: 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 12px;
+    color: #8b7355;
+}
+
+#unit-dialog .income-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+#unit-dialog .income-item {
+    background: rgba(139, 115, 85, 0.3);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #d4af37;
+}
+
+/* Info Popup Styles */
+#info-popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10001;
+}
+
+#info-popup-box {
+    background: linear-gradient(135deg, #2c1810, #3d2317);
+    color: #d4af37;
+    padding: 30px;
+    border-radius: 15px;
+    max-width: 700px;
+    max-height: 80vh;
+    overflow-y: auto;
+    border: 3px solid #d4af37;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+#info-popup-box h2 {
+    color: #d4af37;
+    margin-top: 0;
+    font-family: 'Seagram', serif;
+    text-align: center;
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+
+#info-popup-box h4 {
+    color: #b8941f;
+    margin-bottom: 10px;
+}
+
+#info-popup-box ul {
+    margin: 10px 0;
+    padding-left: 20px;
+}
+
+#info-popup-box li {
+    margin-bottom: 5px;
     line-height: 1.4;
 }
 
-/* YENİ: Gelir detaylarını düzenlemek için */
-#unit-dialog .income-details {
-    display: grid;
-    grid-template-columns: 1fr 1fr; /* İki sütunlu bir yapı */
-    gap: 5px 15px; /* Satırlar ve sütunlar arası boşluk */
-    margin-top: 5px;
+#close-popup-btn {
+    background: linear-gradient(135deg, #d4af37, #b8941f);
+    color: #2c1810;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 20px;
+    width: 100%;
+    font-weight: bold;
+    transition: all 0.3s ease;
 }
 
-/* YENİ: Her bir gelir kalemi için */
-#unit-dialog .income-item {
-    color: #2ecc71; /* Yeşil renk */
+#close-popup-btn:hover {
+    background: linear-gradient(135deg, #b8941f, #d4af37);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
+}
+
+
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    #gameControls {
+        width: 300px;
+    }
+    
+    .unit-name, .building-name {
+        font-size: 8px;
+    }
+    
+    .unit-cost, .building-cost {
+        font-size: 6px;
+    }
+}
+
+@media (max-width: 768px) {
+    #gameContainer {
+        flex-direction: column;
+    }
+    
+    #gameCanvas {
+        margin-top: 60px;
+        width: calc(100% - 40px);
+        height: 50vh;
+        margin-left: 20px;
+        margin-right: 20px;
+    }
+    
+    #gameControls {
+        width: 100%;
+        height: 40vh;
+        border-left: none;
+        border-top: 3px solid #d4af37;
+    }
+    
+    #unitButtons, #buildingButtons {
+        grid-template-columns: 1fr;
+        gap: 5px;
+    }
+    
+    #resourceDisplay {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .resource {
+        font-size: 12px;
+        padding: 4px 8px;
+        min-width: 60px;
+    }
+}
+
+/* Loading and Game States */
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+}
+
+.loading-text {
+    color: #d4af37;
+    font-family: 'Seagram', serif;
+    font-size: 24px;
     font-weight: bold;
-    font-size: 12px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Tile Highlight Effects */
+.tile-highlight {
+    box-shadow: 0 0 10px #d4af37;
+    border: 2px solid #d4af37;
+}
+
+.tile-selected {
+    box-shadow: 0 0 15px #d4af37;
+    border: 2px solid #d4af37;
+}
+
+.tile-moveable {
+    box-shadow: 0 0 8px #b8941f;
+    border: 2px solid #b8941f;
+}
+
+/* Click Animation Styles */
+.click-animation {
+    position: absolute;
+    border: 3px solid #d4af37;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: clickRipple 0.5s ease-out;
+}
+
+@keyframes clickRipple {
+    0% {
+        transform: scale(0);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 0;
+    }
+}
+
+/* Selection Feedback */
+.selection-highlight {
+    position: absolute;
+    border: 2px solid #d4af37;
+    background: rgba(212, 175, 55, 0.2);
+    pointer-events: none;
+    animation: selectionPulse 1s infinite;
+}
+
+@keyframes selectionPulse {
+    0% { 
+        transform: scale(1);
+        opacity: 0.6;
+    }
+    50% { 
+        transform: scale(1.1);
+        opacity: 1.0;
+    }
+    100% { 
+        transform: scale(1);
+        opacity: 0.6;
+    }
+}
+
+/* Tıklama Animasyonu */
+.click-ripple {
+    position: absolute;
+    border: 3px solid rgba(212, 175, 55, 0.8);
+    border-radius: 50%;
+    transform: scale(0);
+    animation: ripple 0.6s linear;
+    pointer-events: none;
+}
+
+@keyframes ripple {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+/* Bilgi Paneli */
+#tileInfoPanel {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(44, 24, 16, 0.9);
+    color: #d4af37;
+    padding: 15px;
+    border-radius: 8px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 14px;
+    white-space: pre-wrap;
+    z-index: 1000;
+    border: 2px solid #d4af37;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+}
+
+/* Hometown Button Styling */
+.hometown-btn {
+    background: linear-gradient(135deg, #d4af37, #b8941f) !important;
+    border: 2px solid #d4af37 !important;
+    color: #2c1810 !important;
+    font-weight: bold !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5) !important;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3) !important;
+    transition: all 0.3s ease !important;
+}
+
+.hometown-btn:hover {
+    background: linear-gradient(135deg, #b8941f, #d4af37) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 12px rgba(212, 175, 55, 0.4) !important;
+}
+
+.hometown-btn:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+}
+
+/* Camera Edge Indicators */
+.camera-edge-indicator {
+    position: fixed;
+    background: rgba(212, 175, 55, 0.8);
+    color: #2c1810;
+    font-weight: bold;
+    z-index: 1000;
+    pointer-events: none;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 1.0; }
+    100% { opacity: 0.6; }
 }

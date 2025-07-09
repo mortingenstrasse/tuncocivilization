@@ -1,7 +1,7 @@
 // =======================================================================
-// ENHANCED CHESS STRATEGY GAME - WITH ANIMATED WATER TILES, TREASURE CHESTS, AND FOG OF WAR
+// ENHANCED CHESS STRATEGY GAME - WITH BUILDING SYSTEM
 // =======================================================================
-console.log('Loading enhanced chess strategy game...');
+console.log('Loading enhanced chess strategy game with building system...');
 
 let game = null;
 
@@ -11,9 +11,9 @@ class ImageManager {
         this.loadedCount = 0; 
         this.totalImages = 0; 
         this.onAllLoaded = null; 
-        // NEW: Water animation frames
+        // Water animation frames
         this.waterFrames = [];
-        this.waterAnimationSpeed = 8; // frames per second
+        this.waterAnimationSpeed = 8;
         this.currentWaterFrame = 0;
         this.lastWaterFrameTime = 0;
     }
@@ -27,7 +27,6 @@ class ImageManager {
         this.images[name] = img; 
     }
     
-    // NEW: Load water animation frames
     loadWaterFrames() {
         for (let i = 1; i <= 16; i++) {
             this.loadImage(`water_frame_${i}`, `tile_water${i}.png`);
@@ -35,7 +34,6 @@ class ImageManager {
         }
     }
     
-    // NEW: Get current water frame
     getCurrentWaterFrame() {
         const currentTime = Date.now();
         if (currentTime - this.lastWaterFrameTime > 1000 / this.waterAnimationSpeed) {
@@ -56,7 +54,124 @@ class ImageManager {
 }
 
 // =======================================================================
-// YENİ BÖLÜM: HAVA DURUMU EFEKTLERİ
+// NEW: BUILDING SYSTEM
+// =======================================================================
+class Building {
+    constructor(x, y, type, owner, game) {
+        this.x = x; // Top-left corner
+        this.y = y; // Top-left corner
+        this.type = type; // 'house', 'blacksmith', 'church', 'palace'
+        this.owner = owner; // 'human' or 'ai'
+        this.game = game;
+        this.isConstructed = false;
+        this.constructionProgress = 0;
+        this.constructionTime = 100; // frames to complete construction
+        this.smokeParticles = [];
+        
+        // Building properties
+        this.properties = this.getBuildingProperties();
+    }
+    
+    getBuildingProperties() {
+        const properties = {
+            house: {
+                housingCapacity: 8,
+                description: "Houses 8 units (Workers and Pawns)"
+            },
+            blacksmith: {
+                enablesUnits: ['rook', 'knight'],
+                description: "Enables Rook and Knight production"
+            },
+            church: {
+                enablesUnits: ['bishop'],
+                description: "Enables Bishop production"
+            },
+            palace: {
+                enablesUnits: ['queen'],
+                description: "Enables Queen production"
+            }
+        };
+        return properties[this.type] || {};
+    }
+    
+    // Check if building occupies a specific tile
+    occupiesTile(x, y) {
+        return x >= this.x && x < this.x + 2 && y >= this.y && y < this.y + 2;
+    }
+    
+    // Get all tiles occupied by this building
+    getOccupiedTiles() {
+        const tiles = [];
+        for (let dx = 0; dx < 2; dx++) {
+            for (let dy = 0; dy < 2; dy++) {
+                tiles.push({ x: this.x + dx, y: this.y + dy });
+            }
+        }
+        return tiles;
+    }
+    
+    // Update construction progress
+    update() {
+        if (!this.isConstructed) {
+            this.constructionProgress++;
+            if (this.constructionProgress >= this.constructionTime) {
+                this.isConstructed = true;
+                this.game.logSpecialMessage(`${this.type.charAt(0).toUpperCase() + this.type.slice(1)} construction completed!`, 
+                    this.owner === 'human' ? 'rgba(46, 204, 113, 0.9)' : 'rgba(231, 76, 60, 0.9)');
+            } else {
+                // Add smoke particles during construction
+                this.addSmokeParticle();
+            }
+        }
+        
+        // Update smoke particles
+        this.updateSmokeParticles();
+    }
+    
+    addSmokeParticle() {
+        if (Math.random() < 0.3) { // 30% chance each frame
+            const centerX = this.x + 1;
+            const centerY = this.y + 1;
+            this.smokeParticles.push({
+                x: centerX + (Math.random() - 0.5) * 2,
+                y: centerY + (Math.random() - 0.5) * 2,
+                vx: (Math.random() - 0.5) * 0.1,
+                vy: -Math.random() * 0.2 - 0.1,
+                life: 60,
+                maxLife: 60,
+                size: Math.random() * 0.3 + 0.2
+            });
+        }
+    }
+    
+    updateSmokeParticles() {
+        this.smokeParticles = this.smokeParticles.filter(particle => {
+            particle.x += particle.vx;
+            particle.y += particle.vy;
+            particle.life--;
+            return particle.life > 0;
+        });
+    }
+    
+    renderSmokeParticles(ctx, game) {
+        this.smokeParticles.forEach(particle => {
+            const screenPos = game.tileToScreen(particle.x, particle.y);
+            const alpha = particle.life / particle.maxLife;
+            const size = particle.size * game.tileSize.width;
+            
+            ctx.save();
+            ctx.globalAlpha = alpha * 0.6;
+            ctx.fillStyle = '#666666';
+            ctx.beginPath();
+            ctx.arc(screenPos.x + game.tileSize.width / 2, screenPos.y + game.tileSize.height / 2, size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        });
+    }
+}
+
+// =======================================================================
+// SNOW EFFECT
 // =======================================================================
 class Snowflake {
     constructor(canvasWidth, canvasHeight) {
@@ -65,28 +180,23 @@ class Snowflake {
         this.reset();
     }
 
-    // Kar tanesini sıfırla (ekranın üstünde yeni bir pozisyona koy)
     reset() {
         this.x = Math.random() * this.canvasWidth;
-        this.y = Math.random() * -this.canvasHeight; // Ekranın üstünden başlasın
-        this.radius = Math.random() * 2 + 1; // 1 ile 3 piksel arası boyut
-        this.speedY = Math.random() * 1 + 0.5; // Düşme hızı
-        this.speedX = Math.random() * 2 - 1; // Hafif sağa/sola salınım
-        this.opacity = Math.random() * 0.5 + 0.3; // Yarı saydamlık
+        this.y = Math.random() * -this.canvasHeight;
+        this.radius = Math.random() * 2 + 1;
+        this.speedY = Math.random() * 1 + 0.5;
+        this.speedX = Math.random() * 2 - 1;
+        this.opacity = Math.random() * 0.5 + 0.3;
     }
 
-    // Kar tanesini güncelle (her karede pozisyonunu değiştir)
     update() {
         this.y += this.speedY;
         this.x += this.speedX;
-
-        // Ekranın altından çıkarsa, başa sar
         if (this.y > this.canvasHeight) {
             this.reset();
         }
     }
 
-    // Kar tanesini çiz
     draw(ctx) {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
@@ -96,7 +206,7 @@ class Snowflake {
 }
 
 // =======================================================================
-// NEW: TREASURE CHEST SYSTEM
+// TREASURE CHEST SYSTEM
 // =======================================================================
 class TreasureChest {
     constructor(x, y, game) {
@@ -108,7 +218,6 @@ class TreasureChest {
     }
     
     generateRewards() {
-        // Random rewards: +1000 gold, +500 gold, or +100 gold
         const possibleRewards = [
             { gold: 1000 },
             { gold: 500 },
@@ -128,15 +237,12 @@ class TreasureChest {
         
         this.isOpened = true;
         
-        // Give rewards to player
         Object.keys(this.rewards).forEach(resource => {
             this.game.humanResources.addResource(resource, this.rewards[resource]);
         });
         
-        // Show dialog
         this.showChestDialog();
         
-        // Log the event
         const rewardText = Object.keys(this.rewards).map(res => 
             `+${this.rewards[res]} ${res}`
         ).join(', ');
@@ -146,7 +252,6 @@ class TreasureChest {
     }
     
     showChestDialog() {
-        // Remove any existing dialog
         const existingDialog = document.getElementById('chest-dialog');
         if (existingDialog) {
             existingDialog.remove();
@@ -194,7 +299,6 @@ class TreasureChest {
         
         document.body.appendChild(dialogElement);
         
-        // Auto-close after 3 seconds or when button is clicked
         const closeDialog = () => {
             if (dialogElement.parentNode) {
                 dialogElement.parentNode.removeChild(dialogElement);
@@ -209,6 +313,61 @@ class TreasureChest {
 window.addEventListener('load', () => { game = new Game(); game.init(); });
 
 // =======================================================================
+// FOG OF WAR
+// =======================================================================
+class FogOfWar {
+    constructor(width, height) {
+        this.width = width;
+        this.height = height;
+        this.grid = Array.from({ length: width }, () => Array(height).fill(0));
+    }
+
+    getState(x, y) {
+        if (x < 0 || x >= this.width || y < 0 || y >= this.height) return 0;
+        return this.grid[x][y];
+    }
+
+    update(units) {
+        for (let x = 0; x < this.width; x++) {
+            for (let y = 0; y < this.height; y++) {
+                if (this.grid[x][y] === 2) this.grid[x][y] = 1;
+            }
+        }
+
+        const visionRadius = 6;
+        units.forEach(unit => {
+            if (unit.owner === 'human') {
+                for (let dx = -visionRadius; dx <= visionRadius; dx++) {
+                    for (let dy = -visionRadius; dy <= visionRadius; dy++) {
+                        if (Math.sqrt(dx*dx + dy*dy) <= visionRadius) {
+                            const x = unit.x + dx;
+                            const y = unit.y + dy;
+                            if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+                                this.grid[x][y] = 2;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    exploreArea(centerX, centerY, radius) {
+        for (let dx = -radius; dx <= radius; dx++) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                 if (Math.sqrt(dx*dx + dy*dy) <= radius) {
+                    const x = centerX + dx;
+                    const y = centerY + dy;
+                    if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+                        if (this.grid[x][y] === 0) this.grid[x][y] = 1;
+                    }
+                }
+            }
+        }
+    }
+}
+
+// =======================================================================
 // UNIT CLASSES
 // =======================================================================
 class Tile {
@@ -220,124 +379,42 @@ class Tile {
     hasResource() { return this.resourceType && this.resourceAmount > 0; }
 }
 
-// BÖLÜM 1: DÜNYA VE HARİTA SINIFLARI
-
-// ... Tile sınıfı ...
-
-// =======================================================================
-// YENİ BÖLÜM: SAVAŞ SİSİ (FOG OF WAR)
-// =======================================================================
-class FogOfWar {
-    constructor(width, height) {
-        this.width = width;
-        this.height = height;
-        // 0: Unexplored, 1: Explored (in fog), 2: Visible
-        this.grid = Array.from({ length: width }, () => Array(height).fill(0));
-    }
-
-    // Belirli bir karonun durumunu döndürür
-    getState(x, y) {
-        if (x < 0 || x >= this.width || y < 0 || y >= this.height) return 0;
-        return this.grid[x][y];
-    }
-
-    // Birimlerin etrafındaki görüş alanını günceller
-    update(units) {
-        // 1. Önce her yeri sise geri döndür (görünmez yap)
-        for (let x = 0; x < this.width; x++) {
-            for (let y = 0; y < this.height; y++) {
-                if (this.grid[x][y] === 2) this.grid[x][y] = 1;
-            }
-        }
-
-        // 2. Her birimin etrafını görünür yap
-        const visionRadius = 6; // Birimlerin ne kadar uzağı görebileceği (12 kare değil, 6 daha dengeli)
-        units.forEach(unit => {
-            // Sadece oyuncunun birimleri görüş sağlar
-            if (unit.owner === 'human') {
-                for (let dx = -visionRadius; dx <= visionRadius; dx++) {
-                    for (let dy = -visionRadius; dy <= visionRadius; dy++) {
-                        if (Math.sqrt(dx*dx + dy*dy) <= visionRadius) {
-                            const x = unit.x + dx;
-                            const y = unit.y + dy;
-                            if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
-                                this.grid[x][y] = 2; // Görünür yap
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    // Başlangıçta belirli bir alanı keşfedilmiş olarak işaretler
-    exploreArea(centerX, centerY, radius) {
-        for (let dx = -radius; dx <= radius; dx++) {
-            for (let dy = -radius; dy <= radius; dy++) {
-                 if (Math.sqrt(dx*dx + dy*dy) <= radius) {
-                    const x = centerX + dx;
-                    const y = centerY + dy;
-                    if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
-                        if (this.grid[x][y] === 0) this.grid[x][y] = 1; // Sadece keşfedilmemişleri sise al
-                    }
-                }
-            }
-        }
-    }
-}
-
 class Unit {
     constructor(x, y, owner, type, game) { 
         this.x = x; this.y = y; this.owner = owner; this.type = type; this.game = game; 
-        //this.maxHealth = 100; this.health = 100; 
         this.hasActed = false; 
     }
     resetTurn() { this.hasActed = false; }
     getPossibleMoves() { return []; }
     moveTo(x, y) {
-        const from = { x: this.x, y: this.y }; // Eski pozisyonu kaydet
+        const from = { x: this.x, y: this.y };
         this.x = x;
         this.y = y;
         this.hasActed = true;
         
-        // YENİ: Hareketi günlüğe kaydet
         this.game.logMove(this, from, { x: x, y: y });
-           // YENİ: Birim hareket ettiğinde sisi güncelle
         if (this.owner === 'human') {
             this.game.fogOfWar.update(this.game.units, 'human');
         }
     }
-    // ...
-    //takeDamage(amount) { this.health -= amount; return this.health <= 0; }
 }
-
-
-
-// KING CLASS - FIXED POSITION, CANNOT MOVE
-// game.js dosyasındaki King sınıfını bulun ve güncelleyin
 
 class King extends Unit {
     constructor(x, y, owner, game) { 
         super(x, y, owner, 'king', game); 
-        // this.isFixed özelliğine artık ihtiyacımız yok, silebiliriz.
     }
     
-    // ==========================================================
-    // YENİ: KRAL'A 1 KARELİK HAREKET YETENEĞİ VERİYORUZ
-    // ==========================================================
     getPossibleMoves() {
         const moves = [];
-        // Etrafındaki 8 kareyi kontrol et
         for (let i = -1; i <= 1; i++) {
             for (let j = -1; j <= 1; j++) {
-                if (i === 0 && j === 0) continue; // Kendisi hariç
+                if (i === 0 && j === 0) continue;
                 
                 const newX = this.x + i;
                 const newY = this.y + j;
                 
                 const targetInfo = this.game.getTileTargetInfo(newX, newY, this.owner);
                 
-                // Eğer hedef karo geçerliyse (harita içinde, yürünebilir ve kendi birimi değilse)
                 if (targetInfo.isValid) {
                     moves.push({ x: newX, y: newY, type: targetInfo.type });
                 }
@@ -368,9 +445,8 @@ class Pawn extends Unit {
     constructor(x, y, owner, game) { super(x, y, owner, 'pawn', game); }
     getPossibleMoves() {
         const moves = [];
-        const direction = this.owner === 'human' ? -1 : 1; // Human moves up, AI moves down
+        const direction = this.owner === 'human' ? -1 : 1;
         
-        // Forward move
         const forwardX = this.x;
         const forwardY = this.y + direction;
         const forwardInfo = this.game.getTileTargetInfo(forwardX, forwardY, this.owner);
@@ -378,7 +454,6 @@ class Pawn extends Unit {
             moves.push({ x: forwardX, y: forwardY, type: 'move' });
         }
         
-        // Diagonal attacks
         for (let dx of [-1, 1]) {
             const attackX = this.x + dx;
             const attackY = this.y + direction;
@@ -396,7 +471,7 @@ class Rook extends Unit {
     constructor(x, y, owner, game) { super(x, y, owner, 'rook', game); }
     getPossibleMoves() {
         const moves = [];
-        const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]]; // Up, Down, Right, Left
+        const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
         
         for (let [dx, dy] of directions) {
             for (let i = 1; i < 8; i++) {
@@ -408,7 +483,7 @@ class Rook extends Unit {
                 
                 moves.push({ x: newX, y: newY, type: targetInfo.type });
                 
-                if (targetInfo.type === 'attack') break; // Stop after attack
+                if (targetInfo.type === 'attack') break;
             }
         }
         return moves;
@@ -419,7 +494,7 @@ class Bishop extends Unit {
     constructor(x, y, owner, game) { super(x, y, owner, 'bishop', game); }
     getPossibleMoves() {
         const moves = [];
-        const directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]]; // Diagonals
+        const directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
         
         for (let [dx, dy] of directions) {
             for (let i = 1; i < 8; i++) {
@@ -431,7 +506,7 @@ class Bishop extends Unit {
                 
                 moves.push({ x: newX, y: newY, type: targetInfo.type });
                 
-                if (targetInfo.type === 'attack') break; // Stop after attack
+                if (targetInfo.type === 'attack') break;
             }
         }
         return moves;
@@ -465,8 +540,8 @@ class Queen extends Unit {
     getPossibleMoves() {
         const moves = [];
         const directions = [
-            [0, 1], [0, -1], [1, 0], [-1, 0], // Rook moves
-            [1, 1], [1, -1], [-1, 1], [-1, -1] // Bishop moves
+            [0, 1], [0, -1], [1, 0], [-1, 0],
+            [1, 1], [1, -1], [-1, 1], [-1, -1]
         ];
         
         for (let [dx, dy] of directions) {
@@ -479,7 +554,7 @@ class Queen extends Unit {
                 
                 moves.push({ x: newX, y: newY, type: targetInfo.type });
                 
-                if (targetInfo.type === 'attack') break; // Stop after attack
+                if (targetInfo.type === 'attack') break;
             }
         }
         return moves;
@@ -518,8 +593,66 @@ class BuildingSystem {
             rook: { stone: 400, gold: 400 },
             bishop: { wood: 800, gold: 350, fish: 60 },
             knight: { meat: 500, stone: 300, fish: 30 },
-            queen: { wood: 3000, meat: 1000, gold: 1000, stone: 1500, fish:120 }
+            queen: { wood: 3000, meat: 1000, gold: 1000, stone: 1500, fish: 120 }
         };
+        
+        // NEW: Building costs (you can adjust these)
+        this.buildingCosts = {
+            house: { wood: 50, stone: 30, gold: 20 },
+            blacksmith: { wood: 250, stone: 300, gold: 100 },
+            church: { wood: 250, stone: 200, gold: 250 },
+            palace: { wood: 1000, stone: 1000, gold: 500, meat: 1000 }
+        };
+    }
+    
+    // NEW: Check housing capacity
+    getHousingInfo(owner) {
+        const houses = this.game.buildings.filter(b => b.owner === owner && b.type === 'house' && b.isConstructed);
+        const housingCapacity = houses.length * 8; // 8 units per house
+        
+        const populationUnits = this.game.units.filter(u => 
+            u.owner === owner && (u.type === 'worker' || u.type === 'pawn')
+        );
+        const currentPopulation = populationUnits.length;
+        
+        return { currentPopulation, housingCapacity, availableHousing: housingCapacity - currentPopulation };
+    }
+    
+    // NEW: Check if unit production is allowed based on housing
+    canProduceUnit(unitType, owner) {
+        if (unitType === 'worker' || unitType === 'pawn') {
+            const housingInfo = this.getHousingInfo(owner);
+            if (housingInfo.availableHousing <= 0) {
+                return { allowed: false, reason: 'housing' };
+            }
+        }
+        
+        // Check building prerequisites
+        const prerequisites = this.getUnitPrerequisites(unitType);
+        if (prerequisites.length > 0) {
+            const hasPrerequisites = prerequisites.every(buildingType => {
+                return this.game.buildings.some(b => 
+                    b.owner === owner && b.type === buildingType && b.isConstructed
+                );
+            });
+            
+            if (!hasPrerequisites) {
+                return { allowed: false, reason: 'prerequisites', missing: prerequisites };
+            }
+        }
+        
+        return { allowed: true };
+    }
+    
+    // NEW: Get unit prerequisites
+    getUnitPrerequisites(unitType) {
+        const prerequisites = {
+            rook: ['blacksmith'],
+            knight: ['blacksmith'],
+            bishop: ['church'],
+            queen: ['palace']
+        };
+        return prerequisites[unitType] || [];
     }
     
     produceUnit(unitType, owner) {
@@ -536,20 +669,45 @@ class BuildingSystem {
             return false;
         }
         
-        // Find spawn location near the king
+        // NEW: Check housing and prerequisites
+        const canProduce = this.canProduceUnit(unitType, owner);
+        if (!canProduce.allowed) {
+            if (canProduce.reason === 'housing' && owner === 'human') {
+                this.showHousingRequiredDialog();
+            } else if (canProduce.reason === 'prerequisites' && owner === 'human') {
+                this.showPrerequisitesDialog(canProduce.missing);
+            }
+            return false;
+        }
+        
         const king = this.game.units.find(u => u.owner === owner && u.type === 'king');
         if (!king) {
             console.log(`No king found for ${owner}`);
             return false;
         }
         
-        const spawnLocation = this.findSpawnLocation(king.x, king.y, owner);
-        if (!spawnLocation) {
-            console.log(`No valid spawn location found for ${unitType}`);
-            return false;
-        }
+        // Yukarıdaki kod bloğunu bu yeni versiyonla değiştirin:
+
+let spawnLocation = this.findSpawnLocation(king.x, king.y, owner);
+
+// EĞER İLK ARAMA BAŞARISIZ OLURSA VE BU BİR AI İSE, ACİL DURUM PLANINI DEVREYE SOK
+if (!spawnLocation && owner === 'ai') {
+    spawnLocation = this.findAnyAvailableSpawnLocation(owner);
+}
+
+// ARTIK SON KEZ KONTROL ET
+if (!spawnLocation) {
+    console.log(`No valid spawn location found for ${unitType} for ${owner}.`);
+    // Sadece insan oyuncu için görünür bir mesaj gösterelim
+    if (owner === 'human') {
+        this.game.logSpecialMessage(
+            `No valid spawn location found for ${unitType}`,
+            'rgba(231, 76, 60, 0.9)'
+        );
+    }
+    return false;
+}
         
-        // Spend resources and create unit
         resourceManager.spend(cost);
         
         let newUnit;
@@ -566,23 +724,89 @@ class BuildingSystem {
         }
         
         this.game.units.push(newUnit);
-        // ==========================================================
-                // YENİ: Üretim mesajını hamle günlüğüne yazdır
-                // ==========================================================
-                const message = `Produced a ${unitType.charAt(0).toUpperCase() + unitType.slice(1)}`;
-                const color = 'rgba(52, 152, 219, 0.9)'; // Mavi bir renk
-                this.game.logSpecialMessage(message, color);
-                // ==========================================================
-                
-                return;
+        
+        const message = `Produced a ${unitType.charAt(0).toUpperCase() + unitType.slice(1)}`;
+        const color = 'rgba(52, 152, 219, 0.9)';
+        this.game.logSpecialMessage(message, color);
         
         console.log(`${owner} produced ${unitType} at (${spawnLocation.x}, ${spawnLocation.y})`);
         this.game.updateUI();
         return true;
     }
     
+    // NEW: Build a building
+    buildBuilding(buildingType, owner, x, y) {
+        const cost = this.buildingCosts[buildingType];
+        if (!cost) {
+            console.log(`Unknown building type: ${buildingType}`);
+            return false;
+        }
+        
+        const resourceManager = owner === 'human' ? this.game.humanResources : this.game.aiResources;
+        
+        if (!resourceManager.canAfford(cost)) {
+            console.log(`Not enough resources to build ${buildingType}`);
+            return false;
+        }
+        
+        // Check if location is valid for 2x2 building
+        if (!this.canPlaceBuilding(x, y, owner)) {
+            console.log(`Cannot place building at (${x}, ${y})`);
+            return false;
+        }
+        
+        resourceManager.spend(cost);
+        
+        const newBuilding = new Building(x, y, buildingType, owner, this.game);
+        this.game.buildings.push(newBuilding);
+        
+        const message = `Started building ${buildingType.charAt(0).toUpperCase() + buildingType.slice(1)}`;
+        const color = owner === 'human' ? 'rgba(46, 204, 113, 0.9)' : 'rgba(231, 76, 60, 0.9)';
+        this.game.logSpecialMessage(message, color);
+        
+        console.log(`${owner} started building ${buildingType} at (${x}, ${y})`);
+        this.game.updateUI();
+        return true;
+    }
+    
+    // NEW: Check if a 2x2 building can be placed at location
+    canPlaceBuilding(x, y, owner) {
+        // Check if all 4 tiles are valid and empty
+        for (let dx = 0; dx < 2; dx++) {
+            for (let dy = 0; dy < 2; dy++) {
+                const checkX = x + dx;
+                const checkY = y + dy;
+                
+                if (!this.game.isValidTile(checkX, checkY)) return false;
+                if (!this.game.map[checkX][checkY].canWalkOn()) return false;
+                if (this.game.getUnitAt(checkX, checkY)) return false;
+                if (this.game.getBuildingAt(checkX, checkY)) return false;
+                if (this.game.getChestAt(checkX, checkY)) return false;
+            }
+        }
+        return true;
+    }
+    
+    // NEW: Find location for building near king
+    findBuildingLocation(kingX, kingY, owner) {
+        for (let radius = 2; radius <= 5; radius++) {
+            for (let dx = -radius; dx <= radius - 1; dx++) { // -1 because building is 2x2
+                for (let dy = -radius; dy <= radius - 1; dy++) {
+                    if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
+                    
+                    const x = kingX + dx;
+                    const y = kingY + dy;
+                    
+                    if (this.canPlaceBuilding(x, y, owner)) {
+                        return { x, y };
+                    }
+                }
+            }
+        }
+        return null;
+    }
+    
     findSpawnLocation(kingX, kingY, owner) {
-        // Try to find empty tiles around the king
         for (let radius = 1; radius <= 3; radius++) {
             for (let dx = -radius; dx <= radius; dx++) {
                 for (let dy = -radius; dy <= radius; dy++) {
@@ -594,13 +818,146 @@ class BuildingSystem {
                     if (this.game.isValidTile(x, y) && 
                         this.game.map[x][y].canWalkOn() && 
                         !this.game.getUnitAt(x, y) &&
-                        !this.game.getChestAt(x, y)) { // NEW: Also check for chests
+                        !this.game.getChestAt(x, y) &&
+                        !this.game.getBuildingAt(x, y)) {
                         return { x, y };
                     }
                 }
             }
         }
         return null;
+    }
+// BuildingSystem sınıfının içine, findSpawnLocation'dan sonra bunu ekleyin:
+
+findAnyAvailableSpawnLocation(owner) {
+    console.log(`AI için harita genelinde boş yer aranıyor...`);
+    // Bütün haritayı tara
+    for (let y = 0; y < this.game.mapHeight; y++) {
+        for (let x = 0; x < this.game.mapWidth; x++) {
+            // Bir yerin boş olup olmadığını kontrol eden mevcut mantığı kullan
+            if (this.game.isValidTile(x, y) && 
+                this.game.map[x][y].canWalkOn() && 
+                !this.game.getUnitAt(x, y) &&
+                !this.game.getChestAt(x, y) &&
+                !this.game.getBuildingAt(x, y)) {
+                console.log(`AI için global arama başarılı: (${x}, ${y}) bulundu.`);
+                return { x, y }; // İlk bulduğun boş yeri döndür
+            }
+        }
+    }
+    console.log(`AI için harita genelinde de boş yer bulunamadı.`);
+    return null; // Bütün harita doluysa (çok nadir) null döndür.
+}
+
+    
+    // NEW: Show housing required dialog
+    showHousingRequiredDialog() {
+        const existingDialog = document.getElementById('housing-dialog');
+        if (existingDialog) {
+            existingDialog.remove();
+        }
+        
+        const dialogElement = document.createElement('div');
+        dialogElement.id = 'housing-dialog';
+        dialogElement.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #fff;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            font-family: Arial, sans-serif;
+            z-index: 10000;
+            min-width: 300px;
+        `;
+        
+        dialogElement.innerHTML = `
+            <h3 style="margin: 0 0 15px 0;">🏠 Housing Required!</h3>
+            <p style="margin: 0 0 15px 0; font-size: 16px;">You need more houses to accommodate additional workers and pawns.</p>
+            <p style="margin: 0 0 20px 0; font-size: 14px;">Each house can accommodate 8 units (workers + pawns).</p>
+            <button id="close-housing-dialog" style="
+                background: white;
+                color: #e74c3c;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: pointer;
+            ">Build More Houses</button>
+        `;
+        
+        document.body.appendChild(dialogElement);
+        
+        const closeDialog = () => {
+            if (dialogElement.parentNode) {
+                dialogElement.parentNode.removeChild(dialogElement);
+            }
+        };
+        
+        document.getElementById('close-housing-dialog').addEventListener('click', closeDialog);
+        setTimeout(closeDialog, 4000);
+    }
+    
+    // NEW: Show prerequisites dialog
+    showPrerequisitesDialog(missingBuildings) {
+        const existingDialog = document.getElementById('prerequisites-dialog');
+        if (existingDialog) {
+            existingDialog.remove();
+        }
+        
+        const dialogElement = document.createElement('div');
+        dialogElement.id = 'prerequisites-dialog';
+        dialogElement.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #fff;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            font-family: Arial, sans-serif;
+            z-index: 10000;
+            min-width: 300px;
+        `;
+        
+        const buildingNames = missingBuildings.map(b => b.charAt(0).toUpperCase() + b.slice(1)).join(', ');
+        
+        dialogElement.innerHTML = `
+            <h3 style="margin: 0 0 15px 0;">🏗️ Prerequisites Required!</h3>
+            <p style="margin: 0 0 15px 0; font-size: 16px;">You need to build: ${buildingNames}</p>
+            <p style="margin: 0 0 20px 0; font-size: 14px;">Some units require specific buildings before they can be produced.</p>
+            <button id="close-prerequisites-dialog" style="
+                background: white;
+                color: #f39c12;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: pointer;
+            ">Build Required Structures</button>
+        `;
+        
+        document.body.appendChild(dialogElement);
+        
+        const closeDialog = () => {
+            if (dialogElement.parentNode) {
+                dialogElement.parentNode.removeChild(dialogElement);
+            }
+        };
+        
+        document.getElementById('close-prerequisites-dialog').addEventListener('click', closeDialog);
+        setTimeout(closeDialog, 4000);
     }
 }
 
@@ -619,6 +976,7 @@ function Game() {
     this.cameraSpeed = 24;
     this.map = []; 
     this.units = []; 
+    this.buildings = []; // NEW: Buildings array
     this.selectedUnit = null; 
     this.possibleMoves = [];
     this.currentPlayer = 'human'; 
@@ -629,66 +987,304 @@ function Game() {
     this.humanResources = new ResourceManager(); 
     this.aiResources = new ResourceManager();
     this.buildingSystem = new BuildingSystem(this);
-    this.gameState = 'playing'; // 'playing', 'human_won', 'ai_won'
-    // YENİ: Zorluk seviyesi değişkeni
-    this.difficulty = 'easy'; // Varsayılan değer
-    // MÜZİK İÇİN YENİ DEĞİŞKENLER
-    this.musicPlaylist = ['GameMusic2.mp3', 'GameMusic3.mp3', 'GameMusic4.mp3', 'GameMusic5.mp3'];
+    this.gameState = 'playing';
+    this.difficulty = 'easy';
+    this.musicPlaylist = ['GameMusic2.mp3', 'GameMusic3.mp3', 'GameMusic4.mp3'];
     this.currentTrackIndex = 0;
     this.audioElement = new Audio();
-    // YENİ: Kar efekti için
     this.snowflakes = [];
-    this.isSnowing = true; // Kar yağışını açıp kapatmak için
-    // YENİ: Hamle günlüğü için mesaj listesi
+    this.isSnowing = true;
     this.moveLogMessages = [];
-    // ==========================================================
-    // YENİ: ZOOM İÇİN DEĞİŞKENLER
-    // ==========================================================
-    this.zoomLevel = 1.0; // Başlangıç zoom seviyesi (%100)
-    this.minZoom = 0.5;   // En fazla ne kadar uzaklaşabilir (%50)
-    this.maxZoom = 1.5;   // En fazla ne kadar yakınlaşabilir (%150)
-    this.baseTileSize = { width: 64, height: 32 }; // Orijinal karo boyutunu sakla
-    // ==========================================================
+    this.zoomLevel = 1.5;
+    this.minZoom = 0.5;
+    this.maxZoom = 2.5;
+    this.baseTileSize = { width: 64, height: 32 };
     this.fogOfWar = new FogOfWar(this.mapWidth, this.mapHeight);
-    
-    // NEW: Treasure chest system
     this.treasureChests = [];
-    this.chestSpawnInterval = 20; // Spawn chest every 20 turns
+    this.chestSpawnInterval = 20;
 }
 
-// GAME INITIALIZATION
+// Continue with the rest of the game implementation...
+// [The rest of the code continues with all the existing functionality plus building system integration]
+
 Game.prototype.init = function() {
-    // YENİ: URL'den zorluk seviyesini oku
     const urlParams = new URLSearchParams(window.location.search);
     const difficultyParam = urlParams.get('difficulty');
     if (['easy', 'hard', 'pro'].includes(difficultyParam)) {
         this.difficulty = difficultyParam;
     }
     console.log(`Game starting with difficulty: ${this.difficulty}`);
-    // BİTTİ
+    
     this.loadAllImages();
     this.imageManager.onAllLoaded = () => {
         this.imagesLoaded = true; 
         this.generateMap(); 
         this.createUnits();
+        this.createInitialBuildings(); // NEW: Create initial buildings
         this.setupEvents(); 
         this.centerOnHometown(); 
-        // YENİ: Müzik sistemini başlat
         this.initMusicPlayer();
         this.gameLoop(); 
         this.updateUI();
-        // YENİ: Kar yağışını başlat
         this.createSnowfall();
-         // YENİ: Oyun yüklendiğinde pop-up'ı göster
         this.showWelcomePopup();
     };
 };
 
+// NEW: Create initial buildings
+Game.prototype.createInitialBuildings = function() {
+    // Give human player one house at start
+    const humanKing = this.units.find(u => u.owner === 'human' && u.type === 'king');
+    if (humanKing) {
+        const houseLocation = this.buildingSystem.findBuildingLocation(humanKing.x, humanKing.y, 'human');
+        if (houseLocation) {
+            const initialHouse = new Building(houseLocation.x, houseLocation.y, 'house', 'human', this);
+            initialHouse.isConstructed = true; // Start with completed house
+            initialHouse.constructionProgress = initialHouse.constructionTime;
+            this.buildings.push(initialHouse);
+        }
+    }
+    
+    // Give AI player one house at start
+    const aiKing = this.units.find(u => u.owner === 'ai' && u.type === 'king');
+    if (aiKing) {
+        const houseLocation = this.buildingSystem.findBuildingLocation(aiKing.x, aiKing.y, 'ai');
+        if (houseLocation) {
+            const initialHouse = new Building(houseLocation.x, houseLocation.y, 'house', 'ai', this);
+            initialHouse.isConstructed = true; // Start with completed house
+            initialHouse.constructionProgress = initialHouse.constructionTime;
+            this.buildings.push(initialHouse);
+        }
+    }
+};
+
+// NEW: Get building at position
+Game.prototype.getBuildingAt = function(x, y) {
+    return this.buildings.find(building => building.occupiesTile(x, y));
+};
+
+Game.prototype.loadAllImages = function() {
+    const im = this.imageManager;
+    ['grass', 'forest', 'mountain', 'plains', 'swamp'].forEach(t => im.loadImage(t, `tile_${t}.png`));
+    
+    im.loadWaterFrames();
+    
+    im.loadImage('castle_human', 'castle_human.png'); 
+    im.loadImage('castle_ai', 'castle_ai.png');
+    im.loadImage('worker_human', 'unit_worker_human.png'); 
+    im.loadImage('worker_ai', 'unit_worker_ai.png');
+    im.loadImage('pawn_human', 'unit_pawn_human.png');
+    im.loadImage('pawn_ai', 'unit_pawn_ai.png');
+    im.loadImage('rook_human', 'unit_rook_human.png');
+    im.loadImage('rook_ai', 'unit_rook_ai.png');
+    im.loadImage('bishop_human', 'unit_bishop_human.png');
+    im.loadImage('bishop_ai', 'unit_bishop_ai.png');
+    im.loadImage('knight_human', 'unit_knight_human.png');
+    im.loadImage('knight_ai', 'unit_knight_ai.png');
+    im.loadImage('queen_human', 'unit_queen_human.png');
+    im.loadImage('queen_ai', 'unit_queen_ai.png');
+    
+    im.loadImage('chest', 'chest.png');
+    
+    // NEW: Load building images
+    im.loadImage('house', 'house.png');
+    im.loadImage('blacksmith', 'blacksmith.png');
+    im.loadImage('church', 'church.png');
+    im.loadImage('palace', 'palace.png');
+};
+
+// Continue with all other existing methods...
+// [Include all the existing game methods like generateMap, createUnits, render, etc.]
+// [The code is getting very long, so I'll include the key new methods and modifications]
+
+// Modified updateUI to include population display
+Game.prototype.updateUI = function() {
+    document.getElementById('turnDisplay').textContent = `Turn: ${this.turn} (${this.currentPlayer.toLowerCase()})`;
+    const res = this.humanResources.resources;
+    Object.keys(res).forEach(type => {
+        const el = document.getElementById(type);
+        if (el) el.textContent = res[type];
+    });
+
+    // NEW: Update population display
+    const housingInfo = this.buildingSystem.getHousingInfo('human');
+    const populationDisplay = document.getElementById('populationDisplay');
+    if (populationDisplay) {
+        populationDisplay.textContent = `Population: ${housingInfo.currentPopulation}/${housingInfo.housingCapacity}`;
+    }
+
+    // Update unit buttons based on housing and prerequisites
+    document.querySelectorAll('#unitButtons .unit-btn').forEach(button => {
+        const unitType = button.id.replace('produce', '').toLowerCase();
+        const cost = this.buildingSystem.unitCosts[unitType];
+        
+        if (cost) {
+            const canProduce = this.buildingSystem.canProduceUnit(unitType, 'human');
+            const canAfford = this.humanResources.canAfford(cost);
+            
+            button.disabled = !canAfford || !canProduce.allowed || this.currentPlayer !== 'human' || this.gameState !== 'playing';
+        } else {
+            button.disabled = true;
+        }
+    });
+    
+    // Update building buttons
+    document.querySelectorAll('#buildingButtons .building-btn').forEach(button => {
+        const buildingType = button.id.replace('build', '').toLowerCase();
+        const cost = this.buildingSystem.buildingCosts[buildingType];
+        
+        if (cost) {
+            button.disabled = !this.humanResources.canAfford(cost) || this.currentPlayer !== 'human' || this.gameState !== 'playing';
+        } else {
+            button.disabled = true;
+        }
+    });
+    
+    document.getElementById('endTurn').disabled = this.currentPlayer !== 'human' || this.gameState !== 'playing';
+};
+
+// Modified render method to include buildings
+Game.prototype.render = function() {
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.fillStyle = '#000000'; 
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    if (!this.imagesLoaded) { 
+        this.ctx.fillStyle = '#ffffff'; 
+        this.ctx.font = '24px Arial'; 
+        this.ctx.textAlign = 'center'; 
+        this.ctx.fillText('Loading Assets...', this.canvas.width / 2, this.canvas.height / 2); 
+        return; 
+    }
+    
+    // Render tiles with fog of war
+    for (let y = 0; y < this.mapHeight; y++) { 
+        for (let x = 0; x < this.mapWidth; x++) { 
+            const tile = this.map[x][y];
+            const screenPos = this.tileToScreen(x, y); 
+            if (screenPos.x > -this.tileSize.width && screenPos.x < this.canvas.width && 
+                screenPos.y > -this.tileSize.height && screenPos.y < this.canvas.height + this.tileSize.height) { 
+                
+                const fogState = this.fogOfWar.getState(x, y);
+                
+                if (fogState > 0) {
+                    let image;
+                    if (tile.terrainType === 'water') {
+                        image = this.imageManager.getCurrentWaterFrame();
+                    } else {
+                        image = this.imageManager.getImage(tile.terrainType);
+                    }
+                    
+                    if (image && image.complete && image.naturalWidth > 0) {
+                        this.ctx.drawImage(image, screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height);
+                        
+                        if (fogState === 1) {
+                            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                            this.drawIsometricTile(screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // NEW: Render buildings
+    this.buildings.forEach(building => {
+        if (this.fogOfWar.getState(building.x, building.y) > 0) {
+            const screenPos = this.tileToScreen(building.x, building.y);
+            const buildingImage = this.imageManager.getImage(building.type);
+            
+            if (buildingImage && buildingImage.complete && buildingImage.naturalWidth > 0) {
+                // Draw building across 2x2 tiles
+                const buildingWidth = this.tileSize.width * 2;
+                const buildingHeight = this.tileSize.height * 2;
+                this.ctx.drawImage(buildingImage, screenPos.x, screenPos.y, buildingWidth, buildingHeight);
+                
+                // Show construction progress
+                if (!building.isConstructed) {
+                    const progress = building.constructionProgress / building.constructionTime;
+                    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    this.ctx.fillRect(screenPos.x, screenPos.y, buildingWidth, buildingHeight * (1 - progress));
+                    
+                    // Render smoke particles
+                    building.renderSmokeParticles(this.ctx, this);
+                }
+            }
+        }
+    });
+    
+    // Render treasure chests
+    this.treasureChests.forEach(chest => {
+        if (!chest.isOpened && this.fogOfWar.getState(chest.x, chest.y) === 2) {
+            const screenPos = this.tileToScreen(chest.x, chest.y);
+            const chestImage = this.imageManager.getImage('chest');
+            if (chestImage && chestImage.complete && chestImage.naturalWidth > 0) {
+                this.ctx.drawImage(chestImage, screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height);
+            }
+        }
+    });
+    
+    // Render possible moves
+    this.possibleMoves.forEach(move => { 
+        const screenPos = this.tileToScreen(move.x, move.y); 
+        this.ctx.fillStyle = move.type === 'attack' ? 'rgba(231, 76, 60, 0.5)' : 'rgba(46, 204, 113, 0.5)'; 
+        this.drawIsometricTile(screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height); 
+    });
+    
+    // Render units
+    this.units.sort((a, b) => (a.x + a.y) - (b.x + b.y)).forEach(unit => { 
+        if (this.fogOfWar.getState(unit.x, unit.y) === 2 || unit.owner === 'human') {
+            const screenPos = this.tileToScreen(unit.x, unit.y); 
+            let imageName = unit.type === 'king' ? `castle_${unit.owner}` : `${unit.type}_${unit.owner}`; 
+            const image = this.imageManager.getImage(imageName); 
+            if (image && image.complete && image.naturalWidth > 0) 
+                this.ctx.drawImage(image, screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height); 
+        }
+    });
+    
+    // Render selection highlight
+    if (this.selectedUnit) { 
+        const screenPos = this.tileToScreen(this.selectedUnit.x, this.selectedUnit.y); 
+        this.ctx.strokeStyle = '#f39c12'; 
+        this.ctx.lineWidth = 2; 
+        this.drawIsometricTileOutline(screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height); 
+    }
+    
+    // Render hover highlight
+    if (this.hoveredTile) { 
+        const screenPos = this.tileToScreen(this.hoveredTile.x, this.hoveredTile.y); 
+        this.ctx.strokeStyle = "rgba(255, 255, 0, 0.8)"; 
+        this.ctx.lineWidth = 2; 
+        this.drawIsometricTileOutline(screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height); 
+    }
+    
+    this.updateAndDrawSnow();
+    this.drawMoveLog();
+};
+
+// Modified gameLoop to update buildings
+Game.prototype.gameLoop = function() { 
+    // Update buildings
+    this.buildings.forEach(building => building.update());
+    
+    this.render(); 
+    requestAnimationFrame(() => this.gameLoop()); 
+};
+
+// Include all other existing methods...
+// [All the other methods from the original game remain the same]
+// [This includes: spawnTreasureChest, getChestAt, handleChestInteraction, etc.]
+// [Also includes: generateMap, createUnits, setupEvents, etc.]
+
+// The rest of the code continues with all existing functionality...
+
+
+
 // =======================================================================
-// NEW: TREASURE CHEST MANAGEMENT
+// COMPLETE GAME IMPLEMENTATION - MISSING METHODS
 // =======================================================================
+
 Game.prototype.spawnTreasureChest = function() {
-    // Find a random empty location on walkable terrain
     let attempts = 0;
     const maxAttempts = 100;
     
@@ -699,7 +1295,8 @@ Game.prototype.spawnTreasureChest = function() {
         if (this.isValidTile(x, y) && 
             this.map[x][y].canWalkOn() && 
             !this.getUnitAt(x, y) && 
-            !this.getChestAt(x, y)) {
+            !this.getChestAt(x, y) &&
+            !this.getBuildingAt(x, y)) {
             
             const chest = new TreasureChest(x, y, this);
             this.treasureChests.push(chest);
@@ -723,7 +1320,6 @@ Game.prototype.handleChestInteraction = function(x, y, unit) {
     if (!chest) return false;
     
     if (!chest.canBeOpenedBy(unit)) {
-        // Show message that only workers can open chests
         this.showChestWorkerOnlyDialog();
         return false;
     }
@@ -732,7 +1328,6 @@ Game.prototype.handleChestInteraction = function(x, y, unit) {
 };
 
 Game.prototype.showChestWorkerOnlyDialog = function() {
-    // Remove any existing dialog
     const existingDialog = document.getElementById('chest-worker-dialog');
     if (existingDialog) {
         existingDialog.remove();
@@ -775,7 +1370,6 @@ Game.prototype.showChestWorkerOnlyDialog = function() {
     
     document.body.appendChild(dialogElement);
     
-    // Auto-close after 2 seconds or when button is clicked
     const closeDialog = () => {
         if (dialogElement.parentNode) {
             dialogElement.parentNode.removeChild(dialogElement);
@@ -786,80 +1380,83 @@ Game.prototype.showChestWorkerOnlyDialog = function() {
     setTimeout(closeDialog, 2000);
 };
 
-// =======================================================================
-// YENİ BÖLÜM: BAŞLANGIÇ BİLGİLENDİRME POP-UP'I
-// =======================================================================
 Game.prototype.showWelcomePopup = function() {
-    // Eğer pop-up zaten varsa, tekrar oluşturma
     if (document.getElementById('info-popup-overlay')) return;
 
-    // Ana arkaplan div'ini oluştur
     const overlay = document.createElement('div');
     overlay.id = 'info-popup-overlay';
 
-    // İçerik kutusunu oluştur
     const box = document.createElement('div');
     box.id = 'info-popup-box';
 
     box.innerHTML = `
-        <h2>Welcome to this world!</h2>
-        <p>Your goal is to build an army and defeat the enemy <strong>King</strong>!</p>
+        <h2 style="font-family: Arial, sans-serif; font-weight: bold;">Welcome to Enhanced Chessforge!</h2>
+        <p style="font-family: Arial, sans-serif; font-weight: bold;">Your goal is to build a city and defeat the enemy <strong>King</strong>!</p>
         
-        <h4>Controls & Gameplay:</h4>
+        <h4 style="font-family: Arial, sans-serif; font-weight: bold;">New Building System:</h4>
         <ul>
-            <li>- Use <strong>Mouse Hold</strong>  to move the camera around the map.</li>
-            <li>- Produce <strong>Workers</strong> to gather resources automatically each turn.</li>
-            <!-- YENİ EKLENEN BİLGİ SATIRI -->
-            <li>- <strong>Each Worker</strong> provides +10 Wood, +10 Stone, +5 Meat, +10 Grain, +3 Gold, +3 Fish per turn.</li>
-            <li>- <strong>Treasure chests</strong> appear every 20 turns and can only be opened by workers!</li>
-            <li>- <strong>Fog of war</strong> hides unexplored areas - move your units to reveal the map!</li>
-            <li>- Use your resources to build a powerful army based on <strong>chess pieces</strong>.</li>
-            <li>- Click the <strong>End Turn</strong> button to finish your turn and let the AI play.</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;">- <strong>Houses</strong> provide housing for 8 units (Workers + Pawns)</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;">- <strong>Blacksmith</strong> enables Rook and Knight production</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;">- <strong>Church</strong> enables Bishop production</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;">- <strong>Palace</strong> enables Queen production</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;">- Buildings occupy 4 tiles (2x2) and have construction animations</li>
         </ul>
 
-        <h4>Unit Movements:</h4>
+        <h4 style="font-family: Arial, sans-serif; font-weight: bold;">Population System:</h4>
         <ul>
-            <li><strong>Pawn:</strong> Moves one step forward, attacks diagonally.</li>
-            <li><strong>Rook:</strong> Moves in straight lines, horizontally or vertically.</li>
-            <li><strong>Bishop:</strong> Moves in diagonal lines.</li>
-            <li><strong>Knight:</strong> Moves in an "L" shape (2+1 squares) and can jump over units.</li>
-            <li><strong>Queen:</strong> The most powerful piece, combines Rook and Bishop movements.</li>
-            <li><strong>King:</strong> Your main base. If it's destroyed, you lose! Long Live The King!</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;">- Workers and Pawns require housing</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;">- Each house accommodates 8 units</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;">- Build more houses to expand your population</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;">- Population display shows current/maximum capacity</li>
         </ul>
 
-        <button id="close-popup-btn">Got It, Let's Play!</button>
+        <h4 style="font-family: Arial, sans-serif; font-weight: bold;">Controls & Gameplay:</h4>
+        <ul>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;">- Use <strong>Mouse Hold</strong> to move the camera around the map</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;">- <strong>Mouse Wheel</strong> to zoom in/out</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;">- Produce <strong>Workers</strong> to gather resources automatically each turn</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;">- <strong>Each Worker</strong> provides +10 Wood, +10 Stone, +5 Meat, +10 Grain, +3 Gold, +3 Fish per turn</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;">- <strong>Treasure chests</strong> appear every 20 turns and can only be opened by workers!</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;">- <strong>Fog of war</strong> hides unexplored areas - move your units to reveal the map!</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;">- Build structures and manage your city strategically</li>
+        </ul>
+
+        <h4 style="font-family: Arial, sans-serif; font-weight: bold;">Unit Movements:</h4>
+        <ul>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;"><strong>Pawn:</strong> Moves one step forward, attacks diagonally</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;"><strong>Rook:</strong> Moves in straight lines, horizontally or vertically</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;"><strong>Bishop:</strong> Moves in diagonal lines</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;"><strong>Knight:</strong> Moves in an "L" shape (2+1 squares) and can jump over units</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;"><strong>Queen:</strong> The most powerful piece, combines Rook and Bishop movements</li>
+            <li style="font-family: Arial, sans-serif; font-weight: bold;"><strong>King:</strong> Your main base. If it's destroyed, you lose! Can move 1 tile</li>
+        </ul>
+
+        <button id="close-popup-btn">Got It, Let's Build!</button>
     `;
 
     overlay.appendChild(box);
     document.body.appendChild(overlay);
 
-    // Kapatma butonuna tıklama olayını ekle
     document.getElementById('close-popup-btn').addEventListener('click', () => {
         document.body.removeChild(overlay);
     });
 };
 
-// YENİ FONKSİYON: Müzik Çaları Başlatma
-// Bu fonksiyonu init fonksiyonunun altına ekleyin
 Game.prototype.initMusicPlayer = function() {
     const volumeSlider = document.getElementById('volume-slider');
     
-    // Ses ayarı
     this.audioElement.volume = volumeSlider.value;
     volumeSlider.addEventListener('input', (e) => {
         this.audioElement.volume = e.target.value;
     });
 
-    // Sıradaki şarkıya geçme
     this.audioElement.addEventListener('ended', () => {
         this.playNextTrack();
     });
 
-    // İlk şarkıyı çal
     this.playNextTrack();
 };
 
-// YENİ FONKSİYON: Sıradaki Şarkıyı Çalma
 Game.prototype.playNextTrack = function() {
     if (this.musicPlaylist.length === 0) return;
     
@@ -868,28 +1465,9 @@ Game.prototype.playNextTrack = function() {
     
     document.getElementById('song-info').textContent = `Now Playing: ${this.musicPlaylist[this.currentTrackIndex]}`;
     
-    // Bir sonraki şarkı için indeksi hazırla
     this.currentTrackIndex = (this.currentTrackIndex + 1) % this.musicPlaylist.length;
 };
 
-Game.prototype.gameLoop = function() { 
-    this.render(); 
-    requestAnimationFrame(() => this.gameLoop()); 
-};
-
-// game.js dosyasında uygun bir yere ekleyin
-
-// =======================================================================
-// YENİ VE BASİT BİRİM DİYALOG SİSTEMİ
-// =======================================================================
-// game.js dosyasındaki showUnitDialog fonksiyonunu bulun ve güncelleyin
-
-// =======================================================================
-// YENİ VE GELİŞMİŞ BİRİM DİYALOG SİSTEMİ (TASARIMA UYGUN)
-// =======================================================================
-// =======================================================================
-// BİRİM DİYALOG SİSTEMİ (GELİŞMİŞ GELİR GÖSTERİMİ)
-// =======================================================================
 Game.prototype.showUnitDialog = function(unit) {
     this.hideUnitDialog(); 
 
@@ -910,12 +1488,8 @@ Game.prototype.showUnitDialog = function(unit) {
         const workerCount = this.units.filter(u => u.owner === 'human' && u.type === 'worker').length;
         const incomePerWorker = { wood: 10, stone: 10, meat: 5, grain: 10, gold: 3, fish: 3 };
         
-        // ==========================================================
-        // YENİ: Gelir metnini satır satır ve ikonlarla oluşturma
-        // ==========================================================
         let incomeHTML = `<strong>Total Income / Turn (${workerCount} Workers):</strong><div class="income-details">`;
         
-        // Her kaynak için ayrı bir satır oluştur
         incomeHTML += `<span class="income-item">🪵 Wood: ${workerCount * incomePerWorker.wood}</span>`;
         incomeHTML += `<span class="income-item">🪨 Stone: ${workerCount * incomePerWorker.stone}</span>`;
         incomeHTML += `<span class="income-item">🪙 Gold: ${workerCount * incomePerWorker.gold}</span>`;
@@ -925,7 +1499,6 @@ Game.prototype.showUnitDialog = function(unit) {
 
         incomeHTML += '</div>';
         additionalContent = `<div class="income-info">${incomeHTML}</div>`;
-        // ==========================================================
     }
 
     dialogElement.innerHTML = `
@@ -950,11 +1523,10 @@ Game.prototype.hideUnitDialog = function() {
             if (dialogElement.parentNode) {
                 dialogElement.parentNode.removeChild(dialogElement);
             }
-        }, 300); // CSS transition süresiyle aynı olmalı
+        }, 300);
     }
 };
 
-// WIN/LOSS DETECTION
 Game.prototype.checkWinCondition = function() {
     const humanKing = this.units.find(u => u.owner === 'human' && u.type === 'king');
     const aiKing = this.units.find(u => u.owner === 'ai' && u.type === 'king');
@@ -975,7 +1547,6 @@ Game.prototype.checkWinCondition = function() {
 };
 
 Game.prototype.showGameOverScreen = function(title, message) {
-    // Create game over overlay
     const overlay = document.createElement('div');
     overlay.id = 'gameOverOverlay';
     overlay.style.cssText = `
@@ -1031,7 +1602,6 @@ Game.prototype.showGameOverScreen = function(title, message) {
     overlay.appendChild(gameOverBox);
     document.body.appendChild(overlay);
     
-    // Add event listeners
     document.getElementById('restartGame').addEventListener('click', () => {
         document.body.removeChild(overlay);
         this.restartGame();
@@ -1043,33 +1613,29 @@ Game.prototype.showGameOverScreen = function(title, message) {
 };
 
 Game.prototype.restartGame = function() {
-    // Reset game state
     this.gameState = 'playing';
     this.currentPlayer = 'human';
     this.turn = 1;
     this.selectedUnit = null;
     this.possibleMoves = [];
     
-    // Reset resources
     this.humanResources = new ResourceManager();
     this.aiResources = new ResourceManager();
     
-    // Reset treasure chests
     this.treasureChests = [];
+    this.buildings = [];
     
-    // Reset fog of war
     this.fogOfWar = new FogOfWar(this.mapWidth, this.mapHeight);
     
-    // Regenerate map and units
     this.generateMap();
     this.createUnits();
+    this.createInitialBuildings();
     this.centerOnHometown();
     this.updateUI();
     
     console.log('Game restarted!');
 };
 
-// RESOURCE AND TURN MANAGEMENT
 Game.prototype.collectResources = function(owner) {
     const resourceManager = owner === 'human' ? this.humanResources : this.aiResources;
     const workers = this.units.filter(u => u.owner === owner && u.type === 'worker');
@@ -1103,12 +1669,10 @@ Game.prototype.endTurn = function() {
         this.turn++;
         this.units.forEach(u => u.resetTurn());
         
-        // NEW: Check if we should spawn a treasure chest
         if (this.turn % this.chestSpawnInterval === 0) {
             this.spawnTreasureChest();
         }
         
-        // YENİ: Sıra oyuncuya geçtiğinde sisi güncelle
         this.fogOfWar.update(this.units);
 
         this.updateUI();
@@ -1116,7 +1680,6 @@ Game.prototype.endTurn = function() {
     }
 };
 
-// AI LOGIC
 Game.prototype.processAITurn = function() {
     if (this.gameState !== 'playing') return;
     
@@ -1124,60 +1687,43 @@ Game.prototype.processAITurn = function() {
     const aiUnits = this.units.filter(u => u.owner === 'ai');
     const humanUnits = this.units.filter(u => u.owner === 'human');
 
-    // 1. ÖNCE HAREKET ET, SONRA ÜRET
-    // Bu, yeni üretilen birimlerin aynı turda hareket etmeye çalışmasını engeller.
-
-    // Tüm AI birimleri için (asker ve işçi) hamle kararlarını ver
+    // AI unit movement logic
     aiUnits.forEach(unit => {
         if (unit.hasActed) return;
 
         const moves = unit.getPossibleMoves();
-        if (moves.length === 0) return; // Hareket edecek yer yoksa pas geç
+        if (moves.length === 0) return;
 
-        // İşçiler sadece rastgele hareket eder
         if (unit.type === 'worker') {
             const moveOnly = moves.filter(m => m.type === 'move');
             if (moveOnly.length > 0) {
                 const randomMove = moveOnly[Math.floor(Math.random() * moveOnly.length)];
                 unit.moveTo(randomMove.x, randomMove.y);
             }
-            return; // İşçi hamlesini yaptı, devam etme.
+            return;
         }
-           // ==========================================================
-        // YENİ: KRAL İÇİN ÖZEL HAREKET MANTIĞI
-        // ==========================================================
+        
         if (unit.type === 'king') {
-            // Kral sadece tehlikedeyse veya sıkıştıysa hareket etsin.
-            // Şimdilik basit bir "eğer hareket edebileceği bir yer varsa rastgele hareket et" mantığı ekleyelim.
-            // Bu, önü tıkandığında yer değiştirmesini sağlar.
             const randomMove = moves[Math.floor(Math.random() * moves.length)];
-            // Eğer hareket edeceği yer bir saldırı değilse hareket etsin. Kral'ı riske atmayalım.
             if (randomMove.type === 'move') {
                  unit.moveTo(randomMove.x, randomMove.y);
                  console.log("AI King repositioned itself.");
             }
-            return; // Kral hamlesini yaptı.
+            return;
         }
-        // ==========================================================
-        
 
-        // Askeri birimler için saldırı/yaklaşma mantığı
         const attackMoves = moves.filter(m => m.type === 'attack');
         
-        // ÖNCELİK 1: SALDIRI
         if (attackMoves.length > 0) {
             const randomAttack = attackMoves[Math.floor(Math.random() * attackMoves.length)];
             const targetUnit = this.getUnitAt(randomAttack.x, randomAttack.y);
             if (targetUnit) {
                 this.executeAttack(unit, targetUnit);
             }
-            return; // Saldırı yapıldı, bu birim için işlem bitti.
+            return;
         }
         
-        // ÖNCELİK 2: HAREKET ETME
-        // Saldıracak kimse yoksa, en yakın düşmana doğru hareket et.
         if (humanUnits.length > 0) {
-            // En yakın düşmanı bul
             let closestEnemy = null;
             let minDistance = Infinity;
 
@@ -1189,9 +1735,8 @@ Game.prototype.processAITurn = function() {
                 }
             });
 
-            if (!closestEnemy) return; // Düşman yoksa hareket etme.
+            if (!closestEnemy) return;
 
-            // En yakın düşmana yaklaştıracak en iyi hamleyi bul
             let bestMove = null;
             let bestMoveDist = Infinity;
 
@@ -1203,8 +1748,6 @@ Game.prototype.processAITurn = function() {
                 }
             });
 
-            // LOOP ENGELLEME MANTIĞI:
-            // Eğer en iyi hamle bizi düşmana yaklaştırmıyorsa, rastgele bir hamle yap.
             if (bestMove && bestMoveDist >= minDistance) {
                 const randomMove = moves[Math.floor(Math.random() * moves.length)];
                 unit.moveTo(randomMove.x, randomMove.y);
@@ -1215,118 +1758,137 @@ Game.prototype.processAITurn = function() {
         }
     });
 
-   // 2. YENİ VE TIKANMAYAN ÜRETİM STRATEJİSİ
-    // ==========================================================
+ // =================== BU BLOKLA DEĞİŞTİRİN ===================
+
+    // AI building and production logic
     const workerCount = aiUnits.filter(u => u.type === 'worker').length;
+    const housingInfo = this.buildingSystem.getHousingInfo('ai');
+    const aiKing = this.units.find(u => u.owner === 'ai' && u.type === 'king');
 
-    // Öncelik 1: Her zaman yeterli işçi olduğundan emin ol
-    if (workerCount < 5) {
-        this.buildingSystem.produceUnit('worker', 'ai');
-    } 
-    // Öncelik 2: Yeterli işçi varsa, askeri birim üretmeyi düşün
-    else {
-        // Üretilebilecek birimlerin bir listesini oluştur (en güçlüden en zayıfa)
-        const possibleBuilds = ['queen', 'knight', 'rook', 'bishop', 'pawn'];
-        let builtSomething = false;
+    if (!aiKing) {
+        console.log("AI turn skipped: King not found.");
+        this.endTurn();
+        return;
+    }
 
-        for (const unitType of possibleBuilds) {
-            // Eğer bu birimi üretecek kaynağı varsa, üret ve döngüden çık
-            if (this.buildingSystem.produceUnit(unitType, 'ai')) {
-                builtSomething = true;
-                break; 
-            }
-        }
+    // Bina varlıklarını her turda kontrol et
+    const hasBlacksmith = this.buildings.some(b => b.owner === 'ai' && b.type === 'blacksmith' && b.isConstructed);
+    const hasChurch = this.buildings.some(b => b.owner === 'ai' && b.type === 'church' && b.isConstructed);
+    const hasPalace = this.buildings.some(b => b.owner === 'ai' && b.type === 'palace' && b.isConstructed);
 
-        // Eğer hiçbir askeri birim üretilemediyse ve işçi sayısı 10'dan azsa, bir işçi daha üret
-        if (!builtSomething && workerCount < 10) {
-            this.buildingSystem.produceUnit('worker', 'ai');
+    // --- AŞAMALI BİNA İNŞAATI ---
+    // AI her koşul bloğunu ayrı ayrı değerlendirecek ve kaynakları yettiğince inşa edecek.
+
+    // 1. Blacksmith yoksa, inşa etmeye çalış.
+    if (!hasBlacksmith && this.aiResources.canAfford(this.buildingSystem.buildingCosts.blacksmith)) {
+        const buildLocation = this.buildingSystem.findBuildingLocation(aiKing.x, aiKing.y, 'ai');
+        if (buildLocation) {
+            this.buildingSystem.buildBuilding('blacksmith', 'ai', buildLocation.x, buildLocation.y);
         }
     }
+
+    // 2. Blacksmith VARSA ve Church yoksa, Church inşa etmeye çalış.
+    if (hasBlacksmith && !hasChurch && this.aiResources.canAfford(this.buildingSystem.buildingCosts.church)) {
+        const buildLocation = this.buildingSystem.findBuildingLocation(aiKing.x, aiKing.y, 'ai');
+        if (buildLocation) {
+            this.buildingSystem.buildBuilding('church', 'ai', buildLocation.x, buildLocation.y);
+        }
+    }
+
+    // 3. Church ve Blacksmith VARSA ve Palace yoksa, Palace inşa etmeye çalış.
+    if (hasChurch && hasBlacksmith && !hasPalace && this.aiResources.canAfford(this.buildingSystem.buildingCosts.palace)) {
+        const buildLocation = this.buildingSystem.findBuildingLocation(aiKing.x, aiKing.y, 'ai');
+        if (buildLocation) {
+            this.buildingSystem.buildBuilding('palace', 'ai', buildLocation.x, buildLocation.y);
+        }
+    }
+
+    // 4. Nüfus sorunu varsa, her zaman ev inşa etmeye çalışsın.
+    if (housingInfo.availableHousing <= 2 && workerCount < 10 && this.aiResources.canAfford(this.buildingSystem.buildingCosts.house)) {
+        const buildLocation = this.buildingSystem.findBuildingLocation(aiKing.x, aiKing.y, 'ai');
+        if (buildLocation) {
+            this.buildingSystem.buildBuilding('house', 'ai', buildLocation.x, buildLocation.y);
+        }
+    }
+
+
+    // --- AŞAMALI BİRİM ÜRETİMİ ---
+    // AI, mevcut binalarına göre hangi birimleri üretebileceğine karar verecek.
     
-    console.log("AI finished its turn.");
+    // Temel ekonomi: Yeterli işçi yoksa her zaman üretmeye çalış.
+    if (workerCount < 5) {
+        this.buildingSystem.produceUnit('worker', 'ai');
+    }
+
+    // Gelişmiş birimler: İlgili binalar varsa üret.
+    if (hasPalace) {
+        this.buildingSystem.produceUnit('queen', 'ai'); // Kaynak varsa Queen üretmeyi dene
+    }
+    if (hasChurch) {
+        this.buildingSystem.produceUnit('bishop', 'ai'); // Kaynak varsa Bishop üretmeyi dene
+    }
+    if (hasBlacksmith) {
+    const unitToProduce = Math.random() < 0.5 ? 'knight' : 'rook';
+    this.buildingSystem.produceUnit(unitToProduce, 'ai');
+}
+
+    // Her zaman üretilebilecek temel askeri birim.
+    // Kaynakları yettiği sürece birden fazla üretmeyi deneyebilir.
+    // Bunu bir döngü ile yapabiliriz ki daha agresif olsun.
+    for (let i = 0; i < 2; i++) { // Örnek: Her tur en fazla 2 pawn üretmeyi denesin
+        this.buildingSystem.produceUnit('pawn', 'ai');
+    }
+    
+    // Ekonomi takviyesi: Askeri birimlerden sonra hala kaynak varsa ve işçi limiti dolmadıysa, işçi üret.
+    if (workerCount < 10) {
+        this.buildingSystem.produceUnit('worker', 'ai');
+    }
+
+    // 100. Turda "gizli" kaynak patlaması
+    if (this.turn === 100) {
+        console.log("AI HAS UNLEASHED ITS SECRET POWER! (Turn 100 Bonus)");
+        const allResources = Object.keys(this.aiResources.resources);
+        allResources.forEach(res => this.aiResources.addResource(res, 20000));
+        this.logSpecialMessage("You feel a dark presence growing in the north...", 'rgba(142, 68, 173, 0.9)');
+    }
+
+    console.log("AI finished its multi-action turn.");
     this.endTurn();
 
+// =================== DEĞİŞİMİN SONU ===================
 };
 
-// COMBAT SYSTEM
 Game.prototype.executeAttack = function(attacker, defender) {
-    // 1. Saldırı mesajını oluştur
     const attackerName = `${attacker.owner === 'human' ? 'Your' : 'Enemy'} ${attacker.type}`;
     const defenderName = `${defender.owner === 'human' ? 'your' : "enemy's"} ${defender.type}`;
     const message = `${attackerName} captures ${defenderName}!`;
 
-    // 1. SES EFEKTİNİ ÇAL
     this.playSoundEffect('effect1.mp3');
     
-    // Mesajın rengini belirle
     const color = attacker.owner === 'human' ? 'rgba(46, 204, 113, 0.9)' : 'rgba(231, 76, 60, 0.9)';
     
-    // Hamle günlüğüne özel saldırı mesajını gönder
     this.logSpecialMessage(message, color);
 
-    // 2. Savunan birimi oyundan kaldır
     this.units = this.units.filter(u => u !== defender);
     
-    // 3. Saldıran birimi, alınan taşın yerine taşı
     attacker.moveTo(defender.x, defender.y);
 
-    // 4. Kazanma koşulunu kontrol et (eğer bir kral alındıysa)
     if (defender.type === 'king') {
         setTimeout(() => this.checkWinCondition(), 100);
     }
 };
 
-// Continue with the rest of the original functions...
-Game.prototype.loadAllImages = function() {
-    const im = this.imageManager;
-    ['grass', 'forest', 'mountain', 'plains', 'swamp'].forEach(t => im.loadImage(t, `tile_${t}.png`));
-    
-    // NEW: Load water animation frames instead of single water tile
-    im.loadWaterFrames();
-    
-    im.loadImage('castle_human', 'castle_human.png'); 
-    im.loadImage('castle_ai', 'castle_ai.png');
-    im.loadImage('worker_human', 'unit_worker_human.png'); 
-    im.loadImage('worker_ai', 'unit_worker_ai.png');
-    im.loadImage('pawn_human', 'unit_pawn_human.png');
-    im.loadImage('pawn_ai', 'unit_pawn_ai.png');
-    im.loadImage('rook_human', 'unit_rook_human.png');
-    im.loadImage('rook_ai', 'unit_rook_ai.png');
-    im.loadImage('bishop_human', 'unit_bishop_human.png');
-    im.loadImage('bishop_ai', 'unit_bishop_ai.png');
-    im.loadImage('knight_human', 'unit_knight_human.png');
-    im.loadImage('knight_ai', 'unit_knight_ai.png');
-    im.loadImage('queen_human', 'unit_queen_human.png');
-    im.loadImage('queen_ai', 'unit_queen_ai.png');
-    
-    // NEW: Load treasure chest image
-    im.loadImage('chest', 'chest.png');
-    
-};
-
-Game.prototype.generateMap = function() {
-    this.map = Array.from({ length: this.mapWidth }, (_, x) => 
-        Array.from({ length: this.mapHeight }, (_, y) => this.generateTile(x, y)));
-};
-
 Game.prototype.generateMap = function() {
     console.log(`Generating map with a variable-sized gulf...`);
 
-    // 1. Her oyun için KÖRFEZİN ÖZELLİKLERİNİ RASTGELE BELİRLE
     this.gulfSettings = {
-        // Körfez haritanın yarısını mı yoksa dörtte birini mi kaplasın?
-        size: Math.random() < 0.5 ? 0.75 : 0.50, // %50 ihtimalle 3/4, %50 ihtimalle 2/4
-        
-        // Körfez haritanın üstünde mi, ortasında mı, altında mı olsun?
+        size: Math.random() < 0.5 ? 0.75 : 0.50,
         verticalPosition: ['top', 'middle', 'bottom'][Math.floor(Math.random() * 3)],
-        
-        // Körfez haritanın sağında mı, solunda mı olsun?
         horizontalPosition: Math.random() < 0.5 ? 'left' : 'right'
     };
     
     console.log('This game\'s gulf settings:', this.gulfSettings);
 
-    // 2. Harita dizisini, her karo için generateTile'ı çağırarak oluştur
     this.map = Array.from({ length: this.mapWidth }, (_, x) =>
         Array.from({ length: this.mapHeight }, (_, y) => this.generateTile(x, y))
     );
@@ -1335,8 +1897,6 @@ Game.prototype.generateMap = function() {
 Game.prototype.generateTile = function(x, y) {
     const name = this.getTileName(x, y);
     
-    // --- ÖNCELİK 1: GÜVENLİ BAŞLANGIÇ BÖLGELERİ ---
-    // Bu kontrol her zaman en başta çalışır ve diğer her şeyi ezer.
     const humanStartY = this.mapHeight - 5;
     const aiStartY = 4;
     const startZoneRadius = 5;
@@ -1345,19 +1905,17 @@ Game.prototype.generateTile = function(x, y) {
     const distToAiStart = Math.sqrt(Math.pow(x - Math.floor(this.mapWidth / 2), 2) + Math.pow(y - aiStartY, 2));
 
     if (distToHumanStart < startZoneRadius || distToAiStart < startZoneRadius) {
-        return new Tile(x, y, name, 'plains', null, 0); // Güvenli başlangıç bölgesi
+        return new Tile(x, y, name, 'plains', null, 0);
     }
 
-    // --- ÖNCELİK 2: BÜYÜK DEĞİŞKEN KÖRFEZ ---
-    // generateMap'te belirlenen ayarlara göre körfezi oluştur.
     const gs = this.gulfSettings;
     let seaCenterY;
     if (gs.verticalPosition === 'top') seaCenterY = this.mapHeight * 0.25;
     else if (gs.verticalPosition === 'bottom') seaCenterY = this.mapHeight * 0.75;
     else seaCenterY = this.mapHeight * 0.5;
 
-    const seaWidth = 6; // Körfezi biraz daha kalın yapalım
-    const seaWobble = this.simpleNoise(x * 0.1, y * 0.1) * 3; // Kenarları daha dalgalı olsun
+    const seaWidth = 6;
+    const seaWobble = this.simpleNoise(x * 0.1, y * 0.1) * 3;
     const inVerticalZone = y > seaCenterY - seaWidth + seaWobble && y < seaCenterY + seaWidth + seaWobble;
 
     if (inVerticalZone) {
@@ -1367,26 +1925,22 @@ Game.prototype.generateTile = function(x, y) {
         }
     }
 
-    // --- ÖNCELİK 3: GERİ KALAN ALANLAR İÇİN RASTGELE ARAZİ ---
-    // Gürültüye dayalı organik arazi üretimi.
     const noise = this.simpleNoise(x * 0.08, y * 0.08);
 
-    if (noise > 0.9) { // Dağlar (çok nadir)
+    if (noise > 0.9) {
         return new Tile(x, y, name, 'mountain', 'stone', 2500);
     }
-    if (noise > 0.4) { // Ormanlar
+    if (noise > 0.4) {
         return new Tile(x, y, name, 'forest', 'wood', 1000);
     }
-    if (noise < -0.2) { // Bataklıklar
+    if (noise < -0.2) {
         return new Tile(x, y, name, 'swamp', 'meat', 600);
     }
-    // Küçük gölcükler için farklı bir gürültü kullanalım
     const puddleNoise = this.simpleNoise(x * 0.35, y * 0.35);
     if (puddleNoise > 0.9) {
         return new Tile(x, y, name, 'water', 'fish', 300);
     }
 
-    // Yukarıdaki koşulların hiçbiri sağlanmazsa, varsayılan araziyi döndür.
     return new Tile(x, y, name, 'grass');
 };
 
@@ -1400,28 +1954,19 @@ Game.prototype.createUnits = function() {
     const hx = Math.floor(this.mapWidth / 2), hy = this.mapHeight - 5;
     const ax = Math.floor(this.mapWidth / 2), ay = 4;
     
-    // Create Kings (fixed position)
     this.units.push(new King(hx, hy, 'human', this));
     this.units.push(new King(ax, ay, 'ai', this));
 
-     // YENİ: Oyun başında AI kralının etrafını keşfet
-    this.fogOfWar.exploreArea(ax, ay, 4); // 4 karelik bir yarıçapta
+    this.fogOfWar.exploreArea(ax, ay, 4);
+    this.fogOfWar.exploreArea(hx, hy, 6);
     
-    // NEW: Initialize fog of war for human starting area
-    this.fogOfWar.exploreArea(hx, hy, 6); // 6 tile radius around human king
-    
-    // Create initial workers
     this.units.push(new Worker(hx - 1, hy - 1, 'human', this));
     this.units.push(new Worker(hx + 1, hy - 1, 'human', this));
     this.units.push(new Worker(ax - 1, ay + 1, 'ai', this));
     this.units.push(new Worker(ax + 1, ay + 1, 'ai', this));
     
-    // NEW: Update fog of war after creating units
     this.fogOfWar.update(this.units);
     
-// ==========================================================
-    // YENİ: ZORLUK SEVİYESİNE GÖRE AI'A BONUS BİRİMLER VER
-    // ==========================================================
     let bonusUnits = {};
     if (this.difficulty === 'hard') {
         bonusUnits = { bishop: 2, rook: 2, knight: 2, queen: 1 };
@@ -1429,7 +1974,6 @@ Game.prototype.createUnits = function() {
         bonusUnits = { bishop: 6, rook: 6, knight: 6, queen: 4 };
     }
     
-    // Bonus birimleri kralın etrafına yerleştir
     Object.keys(bonusUnits).forEach(unitType => {
         for (let i = 0; i < bonusUnits[unitType]; i++) {
             const spawnLoc = this.buildingSystem.findSpawnLocation(ax, ay);
@@ -1447,151 +1991,6 @@ Game.prototype.createUnits = function() {
     });
 };
 
-// Continue with render and other functions from the original code...
-Game.prototype.render = function() {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.ctx.fillStyle = '#000000'; 
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    
-    
-    if (!this.imagesLoaded) { 
-        this.ctx.fillStyle = '#ffffff'; 
-        this.ctx.font = '24px Arial'; 
-        this.ctx.textAlign = 'center'; 
-        this.ctx.fillText('Loading Assets...', this.canvas.width / 2, this.canvas.height / 2); 
-        return; 
-    }
-    
-    
-    // Render tiles with fog of war
-    for (let y = 0; y < this.mapHeight; y++) { 
-        for (let x = 0; x < this.mapWidth; x++) { 
-            const tile = this.map[x][y];
-            const screenPos = this.tileToScreen(x, y); 
-            if (screenPos.x > -this.tileSize.width && screenPos.x < this.canvas.width && 
-                screenPos.y > -this.tileSize.height && screenPos.y < this.canvas.height + this.tileSize.height) { 
-                
-                const fogState = this.fogOfWar.getState(x, y);
-                
-                // Only render tiles that have been explored (state 1 or 2)
-                if (fogState > 0) {
-                    let image;
-                    // NEW: Use animated water frames for water tiles
-                    if (tile.terrainType === 'water') {
-                        image = this.imageManager.getCurrentWaterFrame();
-                    } else {
-                        image = this.imageManager.getImage(tile.terrainType);
-                    }
-                    
-                    if (image && image.complete && image.naturalWidth > 0) {
-                        this.ctx.drawImage(image, screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height);
-                        
-                        // NEW: Apply fog overlay for explored but not visible tiles
-                        if (fogState === 1) {
-                            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-                            this.drawIsometricTile(screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    // NEW: Render treasure chests (only if visible)
-    this.treasureChests.forEach(chest => {
-        if (!chest.isOpened && this.fogOfWar.getState(chest.x, chest.y) === 2) {
-            const screenPos = this.tileToScreen(chest.x, chest.y);
-            const chestImage = this.imageManager.getImage('chest');
-            if (chestImage && chestImage.complete && chestImage.naturalWidth > 0) {
-                this.ctx.drawImage(chestImage, screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height);
-            }
-        }
-    });
-    
-    // Render possible moves
-    this.possibleMoves.forEach(move => { 
-        const screenPos = this.tileToScreen(move.x, move.y); 
-        this.ctx.fillStyle = move.type === 'attack' ? 'rgba(231, 76, 60, 0.5)' : 'rgba(46, 204, 113, 0.5)'; 
-        this.drawIsometricTile(screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height); 
-    });
-    
-    // Render units (only if visible)
-    this.units.sort((a, b) => (a.x + a.y) - (b.x + b.y)).forEach(unit => { 
-        // NEW: Only render units that are visible (not in fog)
-        if (this.fogOfWar.getState(unit.x, unit.y) === 2 || unit.owner === 'human') {
-            const screenPos = this.tileToScreen(unit.x, unit.y); 
-            let imageName = unit.type === 'king' ? `castle_${unit.owner}` : `${unit.type}_${unit.owner}`; 
-            const image = this.imageManager.getImage(imageName); 
-            if (image && image.complete && image.naturalWidth > 0) 
-                this.ctx.drawImage(image, screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height); 
-        }
-    });
-    
-    // Render selection highlight
-    if (this.selectedUnit) { 
-        const screenPos = this.tileToScreen(this.selectedUnit.x, this.selectedUnit.y); 
-        this.ctx.strokeStyle = '#f39c12'; 
-        this.ctx.lineWidth = 2; 
-        this.drawIsometricTileOutline(screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height); 
-    }
-    
-    // Render hover highlight
-    if (this.hoveredTile) { 
-        const screenPos = this.tileToScreen(this.hoveredTile.x, this.hoveredTile.y); 
-        this.ctx.strokeStyle = "rgba(255, 255, 0, 0.8)"; 
-        this.ctx.lineWidth = 2; 
-        this.drawIsometricTileOutline(screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height); 
-    }
-    
-    // ==========================================================
-    // YENİ: Kar Efektini En Üste Çiz
-    // ==========================================================
-    this.updateAndDrawSnow();
-
-    // YENİ: Hamle günlüğü mesajlarını çiz
-    this.drawMoveLog();
-    
-};
-
-Game.prototype.drawMoveLog = function() {
-    const currentTime = Date.now();
-    const messageLifetime = 3000; // Mesajın ekranda kalma süresi (3 saniye)
-    const fadeDuration = 500; // Solma animasyonu süresi (0.5 saniye)
-    
-    // Aktif mesajları filtrele
-    this.moveLogMessages = this.moveLogMessages.filter(msg => 
-        currentTime - msg.creationTime < messageLifetime
-    );
-
-    // --- DEĞİŞİKLİK BURADA ---
-    const startX = 20; // Sol kenardan boşluk
-    const startY = 30; // Üst kenardan başlangıç pozisyonu
-    const lineHeight = 20; // Satır yüksekliği
-
-    this.ctx.font = 'bold 12px Arial';
-    this.ctx.textAlign = 'left';
-
-    this.moveLogMessages.forEach((msg, index) => {
-        const age = currentTime - msg.creationTime;
-        let opacity = 1.0;
-
-        // Mesajın son anlarında solma efekti uygula
-        if (age > messageLifetime - fadeDuration) {
-            opacity = 1.0 - (age - (messageLifetime - fadeDuration)) / fadeDuration;
-        }
-
-        const [r, g, b] = msg.color.match(/\d+/g); // Renk bileşenlerini al
-        this.ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
-        
-        // --- DEĞİŞİKLİK BURADA ---
-        // Yazıyı sol üstten başlayarak aşağı doğru sırala
-        this.ctx.fillText(msg.text, startX, startY + (index * lineHeight));
-    });
-};
-
-// --- YENİ KAR YAĞIŞI FONKSİYONLARI ---
-
-// Belirlenen sayıda kar tanesi oluşturur
 Game.prototype.createSnowfall = function(count = 150) {
     if (!this.isSnowing) return;
     this.snowflakes = [];
@@ -1600,14 +1999,43 @@ Game.prototype.createSnowfall = function(count = 150) {
     }
 };
 
-// Kar tanelerinin pozisyonlarını günceller ve çizer
-// Bu, ana render fonksiyonu içinde çağrılacak
 Game.prototype.updateAndDrawSnow = function() {
     if (!this.isSnowing) return;
     
     this.snowflakes.forEach(snowflake => {
         snowflake.update();
         snowflake.draw(this.ctx);
+    });
+};
+
+Game.prototype.drawMoveLog = function() {
+    const currentTime = Date.now();
+    const messageLifetime = 3000;
+    const fadeDuration = 500;
+    
+    this.moveLogMessages = this.moveLogMessages.filter(msg => 
+        currentTime - msg.creationTime < messageLifetime
+    );
+
+    const startX = 20;
+    const startY = 30;
+    const lineHeight = 20;
+
+    this.ctx.font = 'bold 12px Arial';
+    this.ctx.textAlign = 'left';
+
+    this.moveLogMessages.forEach((msg, index) => {
+        const age = currentTime - msg.creationTime;
+        let opacity = 1.0;
+
+        if (age > messageLifetime - fadeDuration) {
+            opacity = 1.0 - (age - (messageLifetime - fadeDuration)) / fadeDuration;
+        }
+
+        const [r, g, b] = msg.color.match(/\d+/g);
+        this.ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+        
+        this.ctx.fillText(msg.text, startX, startY + (index * lineHeight));
     });
 };
 
@@ -1631,22 +2059,14 @@ Game.prototype.drawIsometricTileOutline = function(x,y,w,h) {
     this.ctx.stroke(); 
 };
 
-
-
-// =======================================================================
-// YENİ BÖLÜM: HAMLE GÜNLÜĞÜ SİSTEMİ
-// =======================================================================
-
-// logMove fonksiyonunu bulun ve güncelleyin
 Game.prototype.logMove = function(unit, from, to) {
     const fromName = this.getTileName(from.x, from.y);
     const toName = this.getTileName(to.x, to.y);
     const text = `${unit.type.charAt(0).toUpperCase() + unit.type.slice(1)} ${fromName} -> ${toName}`;
     const color = unit.owner === 'human' ? 'rgba(46, 204, 113, 0.9)' : 'rgba(231, 76, 60, 0.9)';
-    this.logSpecialMessage(text, color); // Artık bu da özel mesaj fonksiyonunu kullanıyor
+    this.logSpecialMessage(text, color);
 };
 
-// YENİ: Özel metinleri günlüğe ekleyen fonksiyon
 Game.prototype.logSpecialMessage = function(text, color) {
     const message = {
         text: text,
@@ -1659,68 +2079,45 @@ Game.prototype.logSpecialMessage = function(text, color) {
     }
 };
 
-// =======================================================================
-// YENİ SES EFEKTİ FONKSİYONU
-// =======================================================================
 Game.prototype.playSoundEffect = function(soundFile) {
-    // Her seferinde yeni bir Audio nesnesi oluşturmak,
-    // seslerin üst üste binmesine ve kesilmeden çalmasına olanak tanır.
     const audio = new Audio(soundFile);
-    audio.volume = 0.5; // Ses seviyesini ayarla (0.0 ile 1.0 arası)
+    audio.volume = 0.5;
     audio.play().catch(e => console.error("Sound effect failed to play:", e));
 };
 
-// drawMoveLog fonksiyonu aynı kalabilir, bir değişiklik gerekmez.
-
-// =======================================================================
-// ETKİLEŞİM (CLICK & DRAG KAMERA KONTROLÜ İLE GÜNCELLENDİ)
-// =======================================================================
-
 Game.prototype.setupEvents = function() {
-    
-    // --- Tıkla ve Sürükle için Değişkenler ---
     let isDragging = false;
     let lastMouseX = 0;
     let lastMouseY = 0;
-    // Sürükleme ile normal tıklamayı ayırmak için küçük bir eşik
     let dragThreshold = 5; 
     let dragDistance = 0;
 
-    // --- KLAVYE KONTROLÜ GÜNCELLENDİ ---
-    // Sadece 'escape' tuşu dinleniyor, WASD kaldırıldı.
     document.addEventListener('keydown', (e) => { 
         if (e.key.toLowerCase() === 'escape') {
             this.deselectUnit(); 
         }
     });
 
-    // --- MOUSE OLAYLARI ---
-
-    // 1. Fareye basıldığında
     this.canvas.addEventListener('mousedown', (e) => {
         isDragging = true;
-        dragDistance = 0; // Sürükleme mesafesini sıfırla
+        dragDistance = 0;
         lastMouseX = e.clientX;
         lastMouseY = e.clientY;
     });
 
-    // 2. Fare bırakıldığında
     this.canvas.addEventListener('mouseup', (e) => {
         isDragging = false;
     });
 
-    // 3. Fare canvas'tan ayrıldığında
     this.canvas.addEventListener('mouseleave', (e) => {
         isDragging = false;
     });
 
-    // 4. Fare hareket ettiğinde
     this.canvas.addEventListener('mousemove', (e) => {
         if (isDragging) {
             const dx = e.clientX - lastMouseX;
             const dy = e.clientY - lastMouseY;
             
-            // Sürükleme mesafesini hesapla
             dragDistance += Math.abs(dx) + Math.abs(dy);
             
             this.camera.x -= dx;
@@ -1729,10 +2126,8 @@ Game.prototype.setupEvents = function() {
             lastMouseX = e.clientX;
             lastMouseY = e.clientY;
 
-            // Sürükleme sırasında hover efektini geçici olarak durdur
             this.hoveredTile = null;
         } else {
-            // Sürükleme yoksa normal hover efektini çalıştır
             const rect = this.canvas.getBoundingClientRect(); 
             const scaleX = this.canvas.width / rect.width; 
             const scaleY = this.canvas.height / rect.height; 
@@ -1743,58 +2138,40 @@ Game.prototype.setupEvents = function() {
         }
     });
     
-    // 5. Tıklama olayı
     this.canvas.addEventListener('click', (e) => {
-        // Eğer sürükleme mesafesi çok kısaysa, bunu bir "tıklama" olarak kabul et.
         if (dragDistance < dragThreshold) {
             if (this.hoveredTile) this.handleTileClick(this.hoveredTile.x, this.hoveredTile.y);
         }
-        // Eğer uzun bir sürükleme yapıldıysa, click olayını tetikleme.
     });
 
-    // ==========================================================
-    // YENİ: FARE TEKERLEĞİ İLE ZOOM YAPMA
-    // ==========================================================
- // game.js dosyasındaki wheel olay dinleyicisini bulun ve değiştirin
+    this.canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
 
-this.canvas.addEventListener('wheel', (e) => {
-    e.preventDefault();
+        const rect = this.canvas.getBoundingClientRect();
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
+        const mouseScreenX = (e.clientX - rect.left) * scaleX;
+        const mouseScreenY = (e.clientY - rect.top) * scaleY;
+        const worldPosBeforeZoom = this.screenToWorld(mouseScreenX, mouseScreenY);
 
-    // 1. Zoom yapmadan ÖNCE fare imlecinin dünya üzerindeki konumunu al
-    const rect = this.canvas.getBoundingClientRect();
-    const scaleX = this.canvas.width / rect.width;
-    const scaleY = this.canvas.height / rect.height;
-    const mouseScreenX = (e.clientX - rect.left) * scaleX;
-    const mouseScreenY = (e.clientY - rect.top) * scaleY;
-    const worldPosBeforeZoom = this.screenToWorld(mouseScreenX, mouseScreenY);
+        const zoomAmount = 0.1;
+        if (e.deltaY > 0) {
+            this.zoomLevel -= zoomAmount;
+        } else {
+            this.zoomLevel += zoomAmount;
+        }
+        this.zoomLevel = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoomLevel));
 
-    // 2. Zoom seviyesini güncelle (bu kısım aynı)
-    const zoomAmount = 0.1;
-    if (e.deltaY > 0) {
-        this.zoomLevel -= zoomAmount;
-    } else {
-        this.zoomLevel += zoomAmount;
-    }
-    this.zoomLevel = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoomLevel));
+        this.tileSize.width = this.baseTileSize.width * this.zoomLevel;
+        this.tileSize.height = this.baseTileSize.height * this.zoomLevel;
 
-    // 3. Yeni karo boyutunu hesapla (bu kısım aynı)
-    this.tileSize.width = this.baseTileSize.width * this.zoomLevel;
-    this.tileSize.height = this.baseTileSize.height * this.zoomLevel;
+        const worldPosAfterZoom = this.screenToWorld(mouseScreenX, mouseScreenY);
 
-    // 4. Zoom yaptıktan SONRA fare imlecinin YENİ dünya konumunu al
-    const worldPosAfterZoom = this.screenToWorld(mouseScreenX, mouseScreenY);
+        this.camera.x += worldPosBeforeZoom.x - worldPosAfterZoom.x;
+        this.camera.y += worldPosBeforeZoom.y - worldPosAfterZoom.y;
 
-    // 5. Kamerayı, iki dünya konumu arasındaki fark kadar kaydır
-    // Bu, fare imlecinin altındaki noktanın sabit kalmasını sağlar.
-    this.camera.x += worldPosBeforeZoom.x - worldPosAfterZoom.x;
-    this.camera.y += worldPosBeforeZoom.y - worldPosAfterZoom.y;
-
-}, { passive: false });
-    // ==========================================================
-
-    // ... mevcut buton dinleyicileri ...
+    }, { passive: false });
     
-    // --- SİZİN BUTON BAĞLANTILARINIZ (DEĞİŞİKLİK YOK) ---
     document.getElementById('showTutorial').addEventListener('click', () => this.showWelcomePopup());
     document.getElementById('endTurn').addEventListener('click', () => this.endTurn());
     document.getElementById('produceWorker').addEventListener('click', () => this.buildingSystem.produceUnit('worker', 'human'));
@@ -1803,6 +2180,39 @@ this.canvas.addEventListener('wheel', (e) => {
     document.getElementById('produceBishop').addEventListener('click', () => this.buildingSystem.produceUnit('bishop', 'human'));
     document.getElementById('produceKnight').addEventListener('click', () => this.buildingSystem.produceUnit('knight', 'human'));
     document.getElementById('produceQueen').addEventListener('click', () => this.buildingSystem.produceUnit('queen', 'human'));
+    
+    // NEW: Building buttons
+    document.getElementById('buildHouse').addEventListener('click', () => this.handleBuildingPlacement('house'));
+    document.getElementById('buildBlacksmith').addEventListener('click', () => this.handleBuildingPlacement('blacksmith'));
+    document.getElementById('buildChurch').addEventListener('click', () => this.handleBuildingPlacement('church'));
+    document.getElementById('buildPalace').addEventListener('click', () => this.handleBuildingPlacement('palace'));
+};
+
+// NEW: Handle building placement
+Game.prototype.handleBuildingPlacement = function(buildingType) {
+    if (this.currentPlayer !== 'human' || this.gameState !== 'playing') return;
+    
+    const cost = this.buildingSystem.buildingCosts[buildingType];
+    if (!this.humanResources.canAfford(cost)) {
+        console.log(`Not enough resources to build ${buildingType}`);
+        return;
+    }
+    
+    // Find suitable location near king
+    const humanKing = this.units.find(u => u.owner === 'human' && u.type === 'king');
+    if (!humanKing) return;
+    
+    const buildLocation = this.buildingSystem.findBuildingLocation(humanKing.x, humanKing.y, 'human');
+    if (!buildLocation) {
+        console.log(`No suitable location found for ${buildingType}`);
+        this.game.logSpecialMessage(
+        `No valid spawn location found for ${unitType}`,
+        'rgba(231, 76, 60, 0.9)' // kırmızımsı hata rengi
+    );
+        return;
+    }
+    
+    this.buildingSystem.buildBuilding(buildingType, 'human', buildLocation.x, buildLocation.y);
 };
 
 Game.prototype.handleTileClick = function(x, y) {
@@ -1811,12 +2221,9 @@ Game.prototype.handleTileClick = function(x, y) {
     const unitOnTile = this.getUnitAt(x, y);
     const chestOnTile = this.getChestAt(x, y);
 
-    // NEW: Check for treasure chest interaction
     if (chestOnTile && this.selectedUnit && this.selectedUnit.type === 'worker') {
-        // Worker is trying to open a chest
         const move = this.possibleMoves.find(m => m.x === x && m.y === y);
         if (move && move.type === 'move') {
-            // Move to chest and open it
             this.selectedUnit.moveTo(x, y);
             this.handleChestInteraction(x, y, this.selectedUnit);
             this.deselectUnit();
@@ -1825,13 +2232,11 @@ Game.prototype.handleTileClick = function(x, y) {
         }
     }
     
-    // Check if clicking on a chest with non-worker unit
     if (chestOnTile && this.selectedUnit && this.selectedUnit.type !== 'worker') {
         this.showChestWorkerOnlyDialog();
         return;
     }
 
-    // Seçili birim varken bir hamle yapılıyor
     if (this.selectedUnit) {
         const move = this.possibleMoves.find(m => m.x === x && m.y === y);
         if (move) { 
@@ -1841,29 +2246,24 @@ Game.prototype.handleTileClick = function(x, y) {
                 this.selectedUnit.moveTo(x, y); 
             }
             this.deselectUnit();
-            this.hideUnitDialog(); // Hamle yapıldıktan sonra diyalog kutusunu kapat
+            this.hideUnitDialog();
         } else { 
-            // Geçersiz bir hamle yapıldı, seçimi ve diyalog kutusunu iptal et
             this.deselectUnit();
             this.hideUnitDialog();
             
-            // Belki yeni bir birim seçiliyor
             if (unitOnTile && unitOnTile.owner === 'human' && !unitOnTile.hasActed) {
                 this.selectUnit(unitOnTile); 
-                this.showUnitDialog(unitOnTile); // Yeni birim seçildi, diyalog kutusunu göster
+                this.showUnitDialog(unitOnTile);
             }
         }
     } 
-    // Hiçbir birim seçili değilken tıklanıyor
     else if (unitOnTile && unitOnTile.owner === 'human' && !unitOnTile.hasActed) {
-        // Tıklanan birim hareket edebiliyorsa seç ve diyalog kutusunu göster
         this.selectUnit(unitOnTile); 
         this.showUnitDialog(unitOnTile);
     } 
-    // Boş bir karoya veya düşman birimine tıklandıysa
     else {
         this.deselectUnit();
-        this.hideUnitDialog(); // Her durumda diyalog kutusunu kapat
+        this.hideUnitDialog();
     }
 };
 
@@ -1876,29 +2276,6 @@ Game.prototype.selectUnit = function(unit) {
 Game.prototype.deselectUnit = function() { 
     this.selectedUnit = null; 
     this.possibleMoves = []; 
-};
-
-Game.prototype.updateUI = function() {
-    document.getElementById('turnDisplay').textContent = `Turn: ${this.turn} (${this.currentPlayer.toUpperCase()})`;
-    const res = this.humanResources.resources;
-    Object.keys(res).forEach(type => {
-        const el = document.getElementById(type);
-        if (el) el.textContent = res[type];
-    });
-
-    document.querySelectorAll('#unitButtons .unit-btn').forEach(button => {
-        const unitType = button.id.replace('produce', '').toLowerCase();
-        const cost = this.buildingSystem.unitCosts[unitType];
-        
-        if (cost) {
-            button.disabled = !this.humanResources.canAfford(cost) || this.currentPlayer !== 'human' || this.gameState !== 'playing';
-        } else {
-            button.disabled = true;
-        }
-    });
-    
-    // Disable end turn button if not human turn or game over
-    document.getElementById('endTurn').disabled = this.currentPlayer !== 'human' || this.gameState !== 'playing';
 };
 
 Game.prototype.isValidTile = function(x, y) { 
@@ -1924,8 +2301,11 @@ Game.prototype.getTileTargetInfo = function(x, y, attackerOwner) {
     if (!tile.canWalkOn()) return {isValid: false}; 
     const unitOnTile = this.getUnitAt(x, y);
     const chestOnTile = this.getChestAt(x, y);
+    const buildingOnTile = this.getBuildingAt(x, y);
     
-    // NEW: Allow movement to chest tiles
+    // Can't move to tiles with buildings
+    if (buildingOnTile) return {isValid: false};
+    
     if (chestOnTile && !unitOnTile) {
         return { isValid: true, type: 'move' };
     }
@@ -1953,33 +2333,19 @@ Game.prototype.screenToWorld = function(screenX, screenY) {
     return { x: screenX - this.canvas.width / 2 + this.camera.x, y: screenY - this.canvas.height / 2 + this.camera.y }; 
 };
 
-// =======================================================================
-// KOORDİNAT SİSTEMİ - YARIM KARO OFSET DÜZELTMESİ
-// =======================================================================
 Game.prototype.worldToTile = function(worldX, worldY) {
     const halfTileWidth = this.tileSize.width / 2;
     const halfTileHeight = this.tileSize.height / 2;
 
-    // Orijinal formülünüz
     const term1 = worldX / halfTileWidth;
     const term2 = worldY / halfTileHeight;
 
-    // --- DEĞİŞİKLİK BURADA ---
-    // Sonucu yuvarlamadan önce "yarım karo" (0.5) kadar geri kaydırıyoruz.
-    // Bu, yuvarlama işleminin doğru karoyu seçmesini sağlar.
     const tileX = Math.round((term1 + term2) / 2 - 0.5);
     const tileY = Math.round((term2 - term1) / 2);
-    // -------------------------
 
     if (this.isValidTile(tileX, tileY)) {
         return { x: tileX, y: tileY };
     }
     return null;
 };
-
-// =======================================================================
-// NİHAİ KOORDİNAT FONKSİYONLARI (TIKLAMA KAYMASI DÜZELTİLDİ)
-// =======================================================================
-
-// ... diğer koordinat fonksiyonları (tileToWorld, tileToScreen, screenToWorld) aynı kalabilir ...
 

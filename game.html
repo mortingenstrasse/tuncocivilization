@@ -3,10 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chessforge</title>
+    <title>Chessforge - Enhanced</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap');
+
+    * {
+        font-family: 'MedievalSharp', cursive;
+    }
+</style>
 </head>
 <body>
+    
+
     <div id="gameContainer">
         <!-- Game UI Header -->
         <div id="gameUI">
@@ -14,31 +23,36 @@
                 <div id="gameInfo">
                     <span id="turnDisplay">Turn: 1</span>
                     <span id="levelDisplay">Level: 1</span>
+                    <span id="populationDisplay">Population: 0/8</span>
                 </div>
+                 <div id="music-player">
+        <div id="song-info" style="font-family: Arial, sans-serif;">Now Playing: Game Music</div>
+        <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.5">
+    </div>
                 <div id="resourceDisplay">
                     <div class="resource">
                         <span class="resource-icon">🪵</span>
-                        <span id="wood">0</span>
+                        <span id="wood">50</span>
                     </div>
                     <div class="resource">
                         <span class="resource-icon">🪙</span>
-                        <span id="gold">0</span>
+                        <span id="gold">30</span>
                     </div>
                     <div class="resource">
                         <span class="resource-icon">🪨</span>
-                        <span id="stone">0</span>
+                        <span id="stone">20</span>
                     </div>
                     <div class="resource">
                         <span class="resource-icon">🥩</span>
-                        <span id="meat">0</span>
+                        <span id="meat">15</span>
                     </div>
                     <div class="resource">
                         <span class="resource-icon">🌾</span>
-                        <span id="grain">0</span>
+                        <span id="grain">25</span>
                     </div>
                     <div class="resource">
                         <span class="resource-icon">🐟</span>
-                        <span id="fish">0</span>
+                        <span id="fish">30</span>
                     </div>
                 </div>
             </div>
@@ -49,118 +63,160 @@
 
         <!-- Game Controls -->
         <div id="gameControls">
-            <!-- ========================================================== -->
-        <!-- YENİ: END TURN BUTONU İÇİN ÖZEL KONTEYNER -->
-        <!-- ========================================================== -->
-        <div id="end-turn-container">
-            <button id="endTurn" class="end-turn-btn">
-                <span class="icon">▶</span>
-                <div class="text">
-                    <span class="main-text">End Turn</span>
-                    <span class="sub-text">Continue</span>
-                </div>
-            </button>
-        </div>
-        <!-- ========================================================== -->
+            <!-- Logo Container (Added for logo) -->
+            <div id="logoContainer">
+                <img src="chessforfeLogoBlck.png" alt="Chessforge Logo" id="gameLogo">
+            </div>
+
+            <!-- End Turn Button -->
+            <div id="end-turn-container">
+                <button id="endTurn" class="end-turn-btn">
+                    <span class="icon">▶</span>
+                    <div class="text">
+                        <span class="main-text">End Turn</span>
+                        <span class="sub-text">Continue</span>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Unit Production Panel -->
             <div id="unitPanel">
-                <h3>Units</h3>
-                <!-- game.html dosyasındaki #unitButtons div'inin içeriğini tamamen değiştirin -->
+                <h3>🏭 Unit Production</h3>
+                <div id="unitButtons">
+                    <!-- Worker Button (No changes) -->
+                    <button id="produceWorker" class="unit-btn">
+                        <img src="unit_worker_human.png" alt="Worker">
+                        <div class="unit-info">
+                            <span class="unit-name">Worker</span>
+                            <span class="unit-cost">Wood: 10, Meat: 5, Fish: 3</span>
+                        </div>
+                    </button>
 
-<div id="unitButtons">
-    <!-- Worker Butonu -->
-    <button id="produceWorker" class="unit-btn">
-        <img src="unit_worker_human.png" alt="Worker">
-        <div class="unit-info">
-            <span class="unit-name">Worker</span>
-            <span class="unit-cost">Wood: 10, Meat: 5, Fish: 3</span>
-        </div>
-    </button>
+                    <!-- Pawn Button (No changes) -->
+                    <button id="producePawn" class="unit-btn">
+                        <img src="unit_pawn_human.png" alt="Pawn">
+                        <div class="unit-info">
+                            <span class="unit-name">Pawn</span>
+                            <span class="unit-cost">Wood: 25, Stone: 10</span>
+                        </div>
+                    </button>
+                    
+                    <!-- Rook Button -->
+                    <button id="produceRook" class="unit-btn">
+                        <img src="unit_rook_human.png" alt="Rook">
+                        <div class="unit-info">
+                            <span class="unit-name">Rook</span>
+                            <!-- UPDATED: Requirement text changed -->
+                            <span class="unit-cost">Stone: 400, Gold: 400 (Requires: Blacksmith)</span>
+                        </div>
+                    </button>
 
-    <!-- Pawn Butonu -->
-    <button id="producePawn" class="unit-btn">
-        <img src="unit_pawn_human.png" alt="Pawn">
-        <div class="unit-info">
-            <span class="unit-name">Pawn</span>
-            <span class="unit-cost">Wood: 25, Stone: 10</span>
-        </div>
-    </button>
-    
-    <!-- Rook Butonu -->
-    <button id="produceRook" class="unit-btn">
-        <img src="unit_rook_human.png" alt="Rook">
-        <div class="unit-info">
-            <span class="unit-name">Rook</span>
-            <span class="unit-cost">Stone: 400, Gold: 400</span>
-        </div>
-    </button>
+                    <!-- Bishop Button -->
+                    <button id="produceBishop" class="unit-btn">
+                        <img src="unit_bishop_human.png" alt="Bishop">
+                        <div class="unit-info">
+                            <span class="unit-name">Bishop</span>
+                            <!-- UPDATED: Requirement text changed -->
+                            <span class="unit-cost">Wood: 800, Gold: 350, Fish: 60 (Requires: Church)</span>
+                        </div>
+                    </button>
 
-    <!-- Bishop Butonu -->
-    <button id="produceBishop" class="unit-btn">
-        <img src="unit_bishop_human.png" alt="Bishop">
-        <div class="unit-info">
-            <span class="unit-name">Bishop</span>
-            <span class="unit-cost">Wood: 800, Gold: 350, Fish: 60</span>
-        </div>
-    </button>
+                    <!-- Knight Button -->
+                    <button id="produceKnight" class="unit-btn">
+                        <img src="unit_knight_human.png" alt="Knight">
+                        <div class="unit-info">
+                            <span class="unit-name">Knight</span>
+                            <!-- UPDATED: Requirement text changed -->
+                            <span class="unit-cost">Meat: 500, Stone: 300, Fish: 30 (Requires: Blacksmith)</span>
+                        </div>
+                    </button>
 
-    <!-- Knight Butonu -->
-    <button id="produceKnight" class="unit-btn">
-        <img src="unit_knight_human.png" alt="Knight">
-        <div class="unit-info">
-            <span class="unit-name">Knight</span>
-            <span class="unit-cost">Meat: 500, Stone: 300, Fish: 30</span>
-        </div>
-    </button>
+                    <!-- Queen Button -->
+                    <button id="produceQueen" class="unit-btn">
+                        <img src="unit_queen_human.png" alt="Queen">
+                        <div class="unit-info">
+                            <span class="unit-name">Queen</span>
+                            <!-- UPDATED: Requirement text changed -->
+                            <span class="unit-cost">Wood: 3000, Meat: 1000, Gold: 1000, Stone: 1500, Fish: 120 (Requires: Palace)</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
 
-    <!-- Queen Butonu -->
-    <button id="produceQueen" class="unit-btn">
-        <img src="unit_queen_human.png" alt="Queen">
-        <div class="unit-info">
-            <span class="unit-name">Queen</span>
-            <span class="unit-cost">Wood: 3000, Meat: 1000, Gold: 1000, Stone: 1500, Fish: 120</span>
-        </div>
-    </button>
-</div>
+            <!-- NEW: Building Construction Panel -->
+            <div id="buildingPanel">
+                <h3>🏗️ Buildings</h3>
+                <div id="buildingButtons">
+                    <!-- House Button -->
+                    <button id="buildHouse" class="building-btn">
+                        <img src="house.png" alt="House">
+                        <div class="building-info">
+                            <span class="building-name">House</span>
+                            <!-- UPDATED: Cost changed -->
+                            <span class="building-cost">Wood: 50, Stone: 30, Gold: 20 (Houses 8 units)</span>
+                        </div>
+                    </button>
+
+                    <!-- Blacksmith Button -->
+                    <button id="buildBlacksmith" class="building-btn">
+                        <img src="blacksmith.png" alt="Blacksmith">
+                        <div class="building-info">
+                            <span class="building-name">Blacksmith</span>
+                            <!-- UPDATED: Cost changed -->
+                            <span class="building-cost">Wood: 250, Stone: 300, Gold: 100 (Enables Rook, Knight)</span>
+                        </div>
+                    </button>
+
+                    <!-- Church Button -->
+                    <button id="buildChurch" class="building-btn">
+                        <img src="church.png" alt="Church">
+                        <div class="building-info">
+                            <span class="building-name">Church</span>
+                            <!-- UPDATED: Cost changed -->
+                            <span class="building-cost">Wood: 250, Stone: 200, Gold: 250 (Enables Bishop)</span>
+                        </div>
+                    </button>
+
+                    <!-- Palace Button -->
+                    <button id="buildPalace" class="building-btn">
+                        <img src="palace.png" alt="Palace">
+                        <div class="building-info">
+                            <span class="building-name">Palace</span>
+                            <!-- UPDATED: Cost changed -->
+                            <span class="building-cost">Wood: 1000, Stone: 1000, Gold: 500, Meat: 1000 (Enables Queen)</span>
+                        </div>
+                    </button>
+                </div>
             </div>
             
+            <!-- Action Panel -->
             <div id="actionPanel">
-                  <!-- YENİ: "Game Tutorial" butonu (eski endTurn butonunun ID'sini kullanıyor) -->
-    <button id="showTutorial" class="action-btn">Game Tutorial</button>
-    
-    <!-- YENİ: "End Turn" butonu (eski Home butonunun ID'sini ve stilini kullanıyor) -->
-    <!--<button id="endTurn" class="action-btn hometown-btn">End Turn</button>-->
-    
-
-</div>
+                <button id="showTutorial" class="action-btn">📖 Game Tutorial</button>
+                <!-- Music Player -->
+                 </div>
+   
             
+    </div>
 
-            <!--<div id="gameInfo">
-                <h3>Game Info</h3>
-                <p><strong>Objective:</strong> Defeat the enemy King!</p>
-                <p><strong>King:</strong> Fixed position, cannot move</p>
-                <p><strong>Units:</strong> Move according to chess rules</p>
-                <p><strong>Resources:</strong> Collected by Workers each turn</p>
+    
+
+    <!-- Unit Dialog -->
+    <div id="unit-dialog" style="display: none;">
+        <img src="" alt="Unit Portrait" class="portrait">
+        <div class="text-area">
+            <div class="unit-name"></div>
+            <div class="message"></div>
+            <div class="income-info">
+                <div class="income-details"></div>
             </div>
-        </div>  -->
-
-        <!-- Selected Unit Info -->
-        <div id="selectedUnitInfo" style="display: none;">
-            <h3>Selected Unit</h3>
-            <div id="unitDetails"></div>
-            <div id="unitActions"></div>
         </div>
     </div>
+
+    <!-- Info Popup -->
+ 
+
+   
 
     <script src="game_enhanced.js"></script>
-    <!-- game.html dosyasında </body>'dan hemen önce ekleyin -->
-
-    <!-- Müzik ve Ses Kontrolü -->
-    <div id="music-player">
-        <div id="song-info">Now Playing: Game Music</div>
-        <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.5">
-    </div>
-
-</body>
 </body>
 </html>
-
