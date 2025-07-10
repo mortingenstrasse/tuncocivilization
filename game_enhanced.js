@@ -1072,7 +1072,7 @@ Game.prototype.init = function() {
         this.createInitialBuildings(); // NEW: Create initial buildings
         this.setupEvents(); 
         this.centerOnHometown(); 
-        this.initMusicPlayer();
+        // initMusicPlayer() çağrısı kaldırıldı - video bitince başlatılacak
         this.gameLoop(); 
         this.updateUI();
         this.createSnowfall();
@@ -1092,6 +1092,8 @@ Game.prototype.showIntroVideo = function() {
     const closeIntro = () => {
         videoOverlay.style.display = 'none';
         video.pause();
+        // Video bitince müziği başlat
+        this.initMusicPlayer();
     };
 
     video.onended = () => {
