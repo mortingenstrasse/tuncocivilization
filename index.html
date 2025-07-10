@@ -4,16 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tunç Alıcıoğlu's Chessforge</title>
+    
     <style>
+        /* REVİZE 1: Yeni fontun @import ile yüklenmesi */
+        @import url('https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap');
+
         body, html {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #0d1a26;
             color: #fff;
-            font-family: 'Garamond', 'Times New Roman', serif;
+            /* REVİZE 1: Varsayılan fontun MedievalSharp olarak ayarlanması */
+            font-family: 'MedievalSharp', cursive;
+            background-image: url('menuBG.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
         }
         
         .menu-container {
@@ -23,12 +31,13 @@
             flex-direction: column;
             height: 100%;
             text-align: center;
-            background: radial-gradient(ellipse at center, rgba(13, 26, 38, 0.6) 0%, rgba(13, 26, 38, 1) 90%);
+            background-color: rgba(13, 26, 38, 0.5); 
+            backdrop-filter: blur(4px);
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            transition: opacity 0.7s ease-in-out;
+            transition: opacity 0.8s ease-in-out;
             padding: 20px;
             box-sizing: border-box;
             overflow-y: auto;
@@ -64,8 +73,6 @@
             text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.7);
             color: #e0e0e0;
         }
-        h1 { font-size: 3em; margin-bottom: 20px; }
-        h3 { font-size: 1.8em; margin-bottom: 10px; }
         
         .menu-options { 
             list-style: none; 
@@ -77,7 +84,7 @@
         }
 
         .menu-button { 
-            font-family: 'Garamond', 'Times New Roman', serif; 
+            font-family: 'MedievalSharp', cursive; /* Buton fontu da güncellendi */
             font-size: 1.6em; 
             letter-spacing: 1px;
             color: #ecf0f1; 
@@ -105,6 +112,7 @@
         
         #enter-screen h2 { font-size: 2.5em; margin-bottom: 10px; }
         #enter-screen p { font-size: 1.2em; color: #bdc3c7; margin-bottom: 30px; }
+        
         #enter-button {
             font-size: 2em;
             padding: 15px 0;
@@ -121,7 +129,6 @@
             pointer-events: none;
         }
 
-        /* YENİ: Footer/Credits Stili */
         #credits {
             position: fixed;
             bottom: 10px;
@@ -129,12 +136,52 @@
             width: 100%;
             text-align: center;
             font-size: 0.8em;
-            color: rgba(236, 240, 241, 0.35); /* Çok silik renk */
+            color: rgba(236, 240, 241, 0.35);
             letter-spacing: 1px;
-            pointer-events: none; /* Üzerine tıklanmasını engeller */
+            pointer-events: none;
             transition: opacity 0.7s ease-in-out;
             z-index: 10;
         }
+
+        /* REVİZE 3: Giriş Animasyonu Ekranının özel stilleri */
+        #intro-animation {
+            background-color: #ffffff; /* Beyaz zemin */
+            backdrop-filter: none; /* Bu ekranda blur efekti olmasın */
+        }
+        
+        /* REVİZE 2: Animasyon zamanlaması güncellendi (toplam 6 saniye) */
+        .intro-text-container {
+            animation: fadeInAndOut 6s ease-in-out forwards;
+        }
+
+        /* REVİZE 4: Animasyon metinlerinin font, renk ve stili güncellendi */
+        #intro-animation h1 {
+            font-family: Arial, sans-serif; /* Normal Arial font */
+            font-size: 5em;
+            font-weight: 900; /* Black/Bold görünümü için */
+            color: #000000; /* Siyah metin */
+            text-shadow: none; /* Gölge yok */
+            margin: 0;
+            text-transform: none; /* Uppercase olmasın */
+        }
+        #intro-animation p {
+            font-family: Arial, sans-serif; /* Normal Arial font */
+            font-size: 1.5em;
+            letter-spacing: 2px;
+            font-weight: 400; /* Regular */
+            color: #333333; /* Hafif koyu gri */
+            margin-top: 10px;
+            text-transform: none; /* Uppercase olmasın */
+        }
+        
+        /* REVİZE 2: Yeni zamanlamaya göre keyframe'ler güncellendi */
+        @keyframes fadeInAndOut {
+            0%    { opacity: 0; transform: scale(0.95); }
+            25%   { opacity: 1; transform: scale(1); }    /* 1.5s'de belirginleşir (6s * 0.25) */
+            83.3% { opacity: 1; transform: scale(1); }    /* 3.5s daha kalır (toplam 5s'ye kadar) (6s * 0.833) */
+            100%  { opacity: 0; transform: scale(1.05); } /* 1s'de kaybolur */
+        }
+
     </style>
 </head>
 <body>
@@ -144,9 +191,19 @@
         <div>
             <h2>Welcome</h2>
             <p>Click to enter the world of Chessforge</p>
-            <button id="enter-button" class="menu-button">ENTER</button>
+            <button id="enter-button" class="menu-button">Enter</button>
         </div>
     </div>
+    
+    <!-- Giriş Animasyon Ekranı -->
+    <div id="intro-animation" class="menu-container hidden">
+        <div class="intro-text-container">
+            <!-- REVİZE 4: Metin küçük harflerle ve yeni fontla yazıldı -->
+            <h1>trotzdestotes</h1>
+            <p>Independent Games</p>
+        </div>
+    </div>
+
 
     <!-- Ana Menü -->
     <div id="main-menu" class="menu-container hidden">
@@ -158,7 +215,7 @@
             </video>
         </div>
         <ul class="menu-options">
-            <li><a href="game.html" class="menu-button" id="startGameBtn">Single Game</a></li>
+            <li><a href="game.html" class="menu-button" id="startGameBtn">Let It Begin</a></li>
             <li><button id="optionsBtn" class="menu-button">Options</button></li>
         </ul>
     </div>
@@ -175,7 +232,6 @@
         <button id="backBtn" class="menu-button" style="margin-top: 40px; border-color: #c0392b;">Back</button>
     </div>
     
-    <!-- YENİ: Footer elementi (başlangıçta gizli) -->
     <footer id="credits" class="hidden">
         <p>Game & Music by Tunç Alıcıoğlu | v2.0.1</p>
     </footer>
@@ -191,17 +247,25 @@
         const optionsMenu = document.getElementById('options-menu');
         const music = document.getElementById('mainMenuMusic');
         const video = document.getElementById('menu-video');
-        const creditsFooter = document.getElementById('credits'); // GÜNCELLENDİ
+        const creditsFooter = document.getElementById('credits');
+        const introAnimation = document.getElementById('intro-animation');
 
         enterButton.addEventListener('click', () => {
             music.play().catch(error => console.error("Music play failed:", error));
             video.play().catch(error => console.error("Video play failed:", error));
 
             enterScreen.classList.add('hidden');
-            mainMenu.classList.remove('hidden');
-            creditsFooter.classList.remove('hidden'); // GÜNCELLENDİ: Credits'i göster
+            introAnimation.classList.remove('hidden');
+
+            // REVİZE 2: setTimeout süresi yeni animasyon süresine (6 saniye) güncellendi
+            setTimeout(() => {
+                introAnimation.classList.add('hidden');
+                mainMenu.classList.remove('hidden');
+                creditsFooter.classList.remove('hidden');
+            }, 6000); 
         });
 
+        // --- Geri kalan JavaScript kodu aynı kalır ---
         const startGameBtn = document.getElementById('startGameBtn');
         const optionsBtn = document.getElementById('optionsBtn');
         const backBtn = document.getElementById('backBtn');
