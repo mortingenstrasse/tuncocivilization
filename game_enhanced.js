@@ -16,6 +16,17 @@ class ImageManager {
         this.waterAnimationSpeed = 8;
         this.currentWaterFrame = 0;
         this.lastWaterFrameTime = 0;
+        // YENİ: İnsan İşçi Animasyon Değişkenleri
+        this.workerHumanFrames = [];
+        this.workerHumanAnimationSpeed = 5; // Hızı biraz daha yavaş yapalım (saniyede 5 kare)
+        this.currentWorkerHumanFrame = 0;
+        this.lastWorkerHumanFrameTime = 0;
+
+        // YENİ: AI İşçi Animasyon Değişkenleri
+        this.workerAiFrames = [];
+        this.workerAiAnimationSpeed = 5;
+        this.currentWorkerAiFrame = 0;
+        this.lastWorkerAiFrameTime = 0;
     }
     
     loadImage(name, path) { 
@@ -41,6 +52,44 @@ class ImageManager {
             this.lastWaterFrameTime = currentTime;
         }
         return this.images[this.waterFrames[this.currentWaterFrame]];
+    }
+
+    // ImageManager class'ının içine bu yeni fonksiyonları ekleyin
+
+    // YENİ: İnsan İşçi karelerini yüklemek için
+    loadWorkerHumanFrames() {
+        for (let i = 1; i <= 5; i++) {
+            this.loadImage(`worker_human_frame_${i}`, `unit_worker_human${i}.png`);
+            this.workerHumanFrames.push(`worker_human_frame_${i}`);
+        }
+    }
+
+    // YENİ: AI İşçi karelerini yüklemek için
+    loadWorkerAiFrames() {
+        for (let i = 1; i <= 5; i++) {
+            this.loadImage(`worker_ai_frame_${i}`, `unit_worker_ai${i}.png`);
+            this.workerAiFrames.push(`worker_ai_frame_${i}`);
+        }
+    }
+
+    // YENİ: Mevcut insan işçi karesini almak için
+    getCurrentWorkerHumanFrame() {
+        const currentTime = Date.now();
+        if (currentTime - this.lastWorkerHumanFrameTime > 1000 / this.workerHumanAnimationSpeed) {
+            this.currentWorkerHumanFrame = (this.currentWorkerHumanFrame + 1) % this.workerHumanFrames.length;
+            this.lastWorkerHumanFrameTime = currentTime;
+        }
+        return this.images[this.workerHumanFrames[this.currentWorkerHumanFrame]];
+    }
+
+    // YENİ: Mevcut AI işçi karesini almak için
+    getCurrentWorkerAiFrame() {
+        const currentTime = Date.now();
+        if (currentTime - this.lastWorkerAiFrameTime > 1000 / this.workerAiAnimationSpeed) {
+            this.currentWorkerAiFrame = (this.currentWorkerAiFrame + 1) % this.workerAiFrames.length;
+            this.lastWorkerAiFrameTime = currentTime;
+        }
+        return this.images[this.workerAiFrames[this.currentWorkerAiFrame]];
     }
     
     _imageLoaded() { 
@@ -1068,11 +1117,12 @@ Game.prototype.loadAllImages = function() {
     ['grass', 'forest', 'mountain', 'plains', 'swamp'].forEach(t => im.loadImage(t, `tile_${t}.png`));
     
     im.loadWaterFrames();
+    im.loadWorkerHumanFrames(); // YENİ
+    im.loadWorkerAiFrames();     // YENİ
     
     im.loadImage('castle_human', 'castle_human.png'); 
     im.loadImage('castle_ai', 'castle_ai.png');
-    im.loadImage('worker_human', 'unit_worker_human.png'); 
-    im.loadImage('worker_ai', 'unit_worker_ai.png');
+    
     im.loadImage('pawn_human', 'unit_pawn_human.png');
     im.loadImage('pawn_ai', 'unit_pawn_ai.png');
     im.loadImage('rook_human', 'unit_rook_human.png');
@@ -1231,14 +1281,28 @@ Game.prototype.render = function() {
         this.drawIsometricTile(screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height); 
     });
     
-    // Render units
+        // Render units
     this.units.sort((a, b) => (a.x + a.y) - (b.x + b.y)).forEach(unit => { 
         if (this.fogOfWar.getState(unit.x, unit.y) === 2 || unit.owner === 'human') {
             const screenPos = this.tileToScreen(unit.x, unit.y); 
-            let imageName = unit.type === 'king' ? `castle_${unit.owner}` : `${unit.type}_${unit.owner}`; 
-            const image = this.imageManager.getImage(imageName); 
-            if (image && image.complete && image.naturalWidth > 0) 
+            const imageName = unit.type === 'king' ? `castle_${unit.owner}` : `${unit.type}_${unit.owner}`;
+            
+            let image; // 'image' değişkenini burada tanımlıyoruz
+
+            // YENİ: Birimin tipine göre doğru resmi veya animasyon karesini seç
+            if (imageName === 'worker_human') {
+                image = this.imageManager.getCurrentWorkerHumanFrame();
+            } else if (imageName === 'worker_ai') {
+                image = this.imageManager.getCurrentWorkerAiFrame();
+            } else {
+                // Diğer tüm birimler için eskisi gibi statik resmi al
+                image = this.imageManager.getImage(imageName);
+            }
+
+            // Resmi çiz
+            if (image && image.complete && image.naturalWidth > 0) {
                 this.ctx.drawImage(image, screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height); 
+            }
         }
     });
     
