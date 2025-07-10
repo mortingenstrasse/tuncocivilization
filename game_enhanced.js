@@ -1,7 +1,7 @@
 // =======================================================================
 // ENHANCED CHESS STRATEGY GAME - WITH BUILDING SYSTEM
 // =======================================================================
-console.log('Loading enhanced chess strategy game with building system...');
+console.log("Loading enhanced chess strategy game with building system...");
 
 let game = null;
 
@@ -267,12 +267,12 @@ class TreasureChest {
     }
     
     generateRewards() {
-        const possibleRewards = [
-            { gold: 1000 },
-            { gold: 500 },
-            { gold: 100 }
-        ];
-        return possibleRewards[Math.floor(Math.random() * possibleRewards.length)];
+        const rewardTypes = [ 'gold', 'wood', 'stone', 'meat', 'grain', 'fish'];
+        const selectedReward = rewardTypes[Math.floor(Math.random() * rewardTypes.length)];
+        const amount = 100 + Math.floor(Math.random() * 901); // 100-1000 arası
+        const rewards = {};
+        rewards[selectedReward] = amount;
+        return rewards;
     }
     
     canBeOpenedBy(unit) {
@@ -1076,9 +1076,38 @@ Game.prototype.init = function() {
         this.gameLoop(); 
         this.updateUI();
         this.createSnowfall();
-        this.showWelcomePopup();
+        this.showIntroVideo(); // MODIFIED: Show intro video instead of welcome popup
     };
 };
+
+// NEW: Show Intro Video
+Game.prototype.showIntroVideo = function() {
+    const videoOverlay = document.getElementById('intro-video-overlay');
+    const video = document.getElementById('intro-video');
+    const skipButton = document.getElementById('skip-intro-btn');
+    const loadingText = document.getElementById('intro-loading');
+
+    videoOverlay.style.display = 'flex';
+
+    const closeIntro = () => {
+        videoOverlay.style.display = 'none';
+        video.pause();
+    };
+
+    video.onended = () => {
+        closeIntro();
+    };
+
+    skipButton.onclick = () => {
+        closeIntro();
+    };
+
+    // Hide loading text when video can play
+    video.oncanplay = () => {
+        loadingText.style.display = 'none';
+    };
+};
+
 
 // NEW: Create initial buildings
 Game.prototype.createInitialBuildings = function() {
@@ -1339,8 +1368,6 @@ Game.prototype.gameLoop = function() {
 // [All the other methods from the original game remain the same]
 // [This includes: spawnTreasureChest, getChestAt, handleChestInteraction, etc.]
 // [Also includes: generateMap, createUnits, setupEvents, etc.]
-
-// The rest of the code continues with all existing functionality...
 
 
 
@@ -2412,4 +2439,6 @@ Game.prototype.worldToTile = function(worldX, worldY) {
     }
     return null;
 };
+
+
 
