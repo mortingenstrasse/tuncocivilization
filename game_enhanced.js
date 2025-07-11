@@ -1044,7 +1044,7 @@ function Game() {
     this.snowflakes = [];
     this.isSnowing = true;
     this.moveLogMessages = [];
-    this.zoomLevel = 1.5;
+    this.zoomLevel = 2.5; // Maksimum zoom ile başla
     this.minZoom = 0.5;
     this.maxZoom = 2.5;
     this.baseTileSize = { width: 64, height: 32 };
@@ -1094,6 +1094,8 @@ Game.prototype.showIntroVideo = function() {
         video.pause();
         // Video bitince müziği başlat
         this.initMusicPlayer();
+        // İlk tur mesajını göster
+        setTimeout(() => this.showFirstTurnMessage(), 1000);
     };
 
     video.onended = () => {
@@ -1108,6 +1110,59 @@ Game.prototype.showIntroVideo = function() {
     video.oncanplay = () => {
         loadingText.style.display = 'none';
     };
+};
+
+// İlk tur mesajını göster
+Game.prototype.showFirstTurnMessage = function() {
+    const existingDialog = document.getElementById('first-turn-dialog');
+    if (existingDialog) {
+        existingDialog.remove();
+    }
+    
+    const dialogElement = document.createElement('div');
+    dialogElement.id = 'first-turn-dialog';
+    dialogElement.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: linear-gradient(135deg, #2c3e50, #34495e);
+        color: #ecf0f1;
+        padding: 40px;
+        border-radius: 15px;
+        border: 3px solid #f39c12;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+        text-align: center;
+        font-family: 'MedievalSharp', cursive;
+        z-index: 10000;
+        max-width: 600px;
+        line-height: 1.6;
+    `;
+    
+    dialogElement.innerHTML = `
+        <h2 style="color: #f39c12; margin-bottom: 20px; font-size: 28px;">👑 Royal Decree</h2>
+        <p style="font-size: 18px; margin-bottom: 30px; font-style: italic;">
+            "Our people shall toil. We shall raise homes, build cities, and forge an army to guard against the darkness. 
+            And with sword in hand, we shall strike our foes, not for conquest, but for the glory and growth of our realm."
+        </p>
+        <p style="font-size: 14px; color: #bdc3c7; margin-bottom: 20px;">
+            Click anywhere to begin your reign...
+        </p>
+    `;
+    
+    document.body.appendChild(dialogElement);
+    
+    const closeDialog = () => {
+        if (dialogElement.parentNode) {
+            dialogElement.parentNode.removeChild(dialogElement);
+        }
+        document.removeEventListener('click', closeDialog);
+    };
+    
+    // Herhangi bir yere tıklandığında kapat
+    setTimeout(() => {
+        document.addEventListener('click', closeDialog);
+    }, 500);
 };
 
 
@@ -1768,8 +1823,31 @@ Game.prototype.endTurn = function() {
         
         this.fogOfWar.update(this.units);
 
+        // Şah çekme kontrolü
+        this.checkKingInDanger();
+
         this.updateUI();
         console.log(`Turn ${this.turn}: Your Turn`);
+    }
+};
+
+// Şah çekme kontrolü
+Game.prototype.checkKingInDanger = function() {
+    const humanKing = this.units.find(u => u.owner === 'human' && u.type === 'king');
+    if (!humanKing) return;
+    
+    const aiUnits = this.units.filter(u => u.owner === 'ai');
+    
+    for (let aiUnit of aiUnits) {
+        const moves = aiUnit.getPossibleMoves();
+        const canAttackKing = moves.some(move => 
+            move.x === humanKing.x && move.y === humanKing.y && move.type === 'attack'
+        );
+        
+        if (canAttackKing) {
+            this.logSpecialMessage("Your King is in danger!", 'rgba(255, 69, 0, 0.9)');
+            break;
+        }
     }
 };
 
@@ -1952,9 +2030,13 @@ Game.prototype.processAITurn = function() {
 };
 
 Game.prototype.executeAttack = function(attacker, defender) {
-    const attackerName = `${attacker.owner === 'human' ? 'Your' : 'Enemy'} ${attacker.type}`;
-    const defenderName = `${defender.owner === 'human' ? 'your' : "enemy's"} ${defender.type}`;
-    const message = `${attackerName} captures ${defenderName}!`;
+    // Daha açık öldürme mesajı
+    let message;
+    if (defender.owner === 'human') {
+        message = `Your ${defender.type} has been killed by Enemy ${attacker.type}!`;
+    } else {
+        message = `Your ${attacker.type} has killed Enemy ${defender.type}!`;
+    }
 
     this.playSoundEffect('effect1.mp3');
     
