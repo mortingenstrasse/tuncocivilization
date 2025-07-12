@@ -143,44 +143,45 @@
             z-index: 10;
         }
 
-        /* REVİZE 3: Giriş Animasyonu Ekranının özel stilleri */
+         /* --- DEĞİŞİKLİK BAŞLANGICI: GİRİŞ ANİMASYONU --- */
+        
         #intro-animation {
-            background-color: #ffffff; /* Beyaz zemin */
-            backdrop-filter: none; /* Bu ekranda blur efekti olmasın */
+            background-color: #000000; /* Zemin siyah olarak değiştirildi */
+            backdrop-filter: none;
         }
         
-        /* REVİZE 2: Animasyon zamanlaması güncellendi (toplam 6 saniye) */
-        .intro-text-container {
-            animation: fadeInAndOut 6s ease-in-out forwards;
+        #intro-logo {
+            /* Logo görselinin stili */
+            width: 700px; /* Logonun genişliği */
+            max-width: 90%; /* Mobilde taşmayı önler */
+            height: auto;
+            /* Yeni animasyonu burada tanımlıyoruz */
+            animation: logoFadeEffect 7s ease-in-out forwards;
         }
 
-        /* REVİZE 4: Animasyon metinlerinin font, renk ve stili güncellendi */
-        #intro-animation h1 {
-            font-family: Arial, sans-serif; /* Normal Arial font */
-            font-size: 5em;
-            font-weight: 900; /* Black/Bold görünümü için */
-            color: #000000; /* Siyah metin */
-            text-shadow: none; /* Gölge yok */
-            margin: 0;
-            text-transform: none; /* Uppercase olmasın */
+        /* İstediğiniz zamanlamaya göre yeni keyframe animasyonu */
+        /* 3s belirme, 2s bekleme, 2s kaybolma = Toplam 7 saniye */
+        @keyframes logoFadeEffect {
+            0% { 
+                opacity: 0; 
+            }
+            /* 3 saniye / 7 saniye = ~43% */
+            43% { 
+                opacity: 1; 
+            }
+            /* 3s + 2s bekleme = 5 saniye. 5s / 7s = ~71% */
+            71% { 
+                opacity: 1; 
+            }
+            /* Son 2 saniyede kaybolma */
+            100% { 
+                opacity: 0; 
+            }
         }
-        #intro-animation p {
-            font-family: Arial, sans-serif; /* Normal Arial font */
-            font-size: 1.5em;
-            letter-spacing: 2px;
-            font-weight: 400; /* Regular */
-            color: #333333; /* Hafif koyu gri */
-            margin-top: 10px;
-            text-transform: none; /* Uppercase olmasın */
-        }
-        
-        /* REVİZE 2: Yeni zamanlamaya göre keyframe'ler güncellendi */
-        @keyframes fadeInAndOut {
-            0%    { opacity: 0; transform: scale(0.95); }
-            25%   { opacity: 1; transform: scale(1); }    /* 1.5s'de belirginleşir (6s * 0.25) */
-            83.3% { opacity: 1; transform: scale(1); }    /* 3.5s daha kalır (toplam 5s'ye kadar) (6s * 0.833) */
-            100%  { opacity: 0; transform: scale(1.05); } /* 1s'de kaybolur */
-        }
+
+        /* Eski metin animasyonu stillerini sildik, artık gerek yok */
+
+        /* --- DEĞİŞİKLİK SONU --- */
 
     </style>
 </head>
@@ -195,15 +196,10 @@
         </div>
     </div>
     
-    <!-- Giriş Animasyon Ekranı -->
+   <!-- DEĞİŞİKLİK: Giriş Animasyon Ekranı artık metin yerine görsel içeriyor -->
     <div id="intro-animation" class="menu-container hidden">
-        <div class="intro-text-container">
-            <!-- REVİZE 4: Metin küçük harflerle ve yeni fontla yazıldı -->
-            <h1>trotzdestotes</h1>
-            <p>Independent Games</p>
-        </div>
+        <img src="trotzdestodes.png" alt="trotzdestodes Independent Games Logo" id="intro-logo">
     </div>
-
 
     <!-- Ana Menü -->
     <div id="main-menu" class="menu-container hidden">
@@ -257,13 +253,15 @@
             enterScreen.classList.add('hidden');
             introAnimation.classList.remove('hidden');
 
-            // REVİZE 2: setTimeout süresi yeni animasyon süresine (6 saniye) güncellendi
+           // --- DEĞİŞİKLİK: setTimeout süresi yeni animasyon süresine (7 saniye) güncellendi ---
             setTimeout(() => {
                 introAnimation.classList.add('hidden');
                 mainMenu.classList.remove('hidden');
                 creditsFooter.classList.remove('hidden');
-            }, 6000); 
+            }, 7000); // 3s fade-in + 2s hold + 2s fade-out = 7000ms
         });
+
+        // --- Geri kalan JavaScript kodu aynı kalır ---
 
         // --- Geri kalan JavaScript kodu aynı kalır ---
         const startGameBtn = document.getElementById('startGameBtn');

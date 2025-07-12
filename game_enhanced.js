@@ -774,6 +774,15 @@ if (!spawnLocation) {
         
         this.game.units.push(newUnit);
         
+        // Queen üretildiğinde level artışı
+        if (unitType === 'queen' && owner === 'human') {
+            this.game.level++;
+            this.game.logSpecialMessage(
+                `Level Up! Your kingdom has reached Level ${this.game.level}!`,
+                'rgba(243, 156, 18, 0.9)'
+            );
+        }
+        
         const message = `Produced a ${unitType.charAt(0).toUpperCase() + unitType.slice(1)}`;
         const color = 'rgba(52, 152, 219, 0.9)';
         this.game.logSpecialMessage(message, color);
@@ -1018,6 +1027,8 @@ function Game() {
     this.ctx = this.canvas.getContext('2d');
     this.canvas.width = 1024; 
     this.canvas.height = 768;
+    // Canvas'a özel cursor stilini uygula
+    this.canvas.style.cursor = "url('cursor.cur'), auto";
     this.mapWidth = 26; 
     this.mapHeight = 50;
     this.tileSize = { width: 64, height: 32 };
@@ -1051,6 +1062,7 @@ function Game() {
     this.fogOfWar = new FogOfWar(this.mapWidth, this.mapHeight);
     this.treasureChests = [];
     this.chestSpawnInterval = 20;
+    this.level = 1; // Oyuncu seviyesi
 }
 
 // Continue with the rest of the game implementation...
@@ -1681,17 +1693,66 @@ Game.prototype.checkWinCondition = function() {
     
     if (!humanKing) {
         this.gameState = 'ai_won';
-        this.showGameOverScreen('AI Wins!', 'Your King has been defeated!');
+        this.showKingMessage('defeatKingMessage', () => {
+            this.showGameOverScreen('AI Wins!', 'Your King has been defeated!');
+        });
         return true;
     }
     
     if (!aiKing) {
         this.gameState = 'human_won';
-        this.showGameOverScreen('You Win!', 'Enemy King has been defeated!');
+        this.showKingMessage('victoryKingMessage', () => {
+            this.showGameOverScreen('You Win!', 'Enemy King has been defeated!');
+        });
         return true;
     }
     
     return false;
+};
+
+// Kral mesajını göster
+Game.prototype.showKingMessage = function(messageType, callback) {
+    const messages = {
+        'victoryKingMessage': 'We stood strong. We fought with honour. We have triumphed. Now, our people shall know peace under the light of our banner', // Kullanıcı tarafından doldurulacak
+        'defeatKingMessage': 'We fought bravely. Though we fall today, the chronicles shall remember our stand. We shall return, we shall rise, and in time… we shall conquer.'   // Kullanıcı tarafından doldurulacak
+    };
+    
+    const message = messages[messageType];
+    if (!message) {
+        // Mesaj yoksa direkt callback'i çağır
+        callback();
+        return;
+    }
+    
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.8); z-index: 10000;
+        display: flex; justify-content: center; align-items: center;
+        font-family: 'MedievalSharp', cursive;
+    `;
+    
+    const messageBox = document.createElement('div');
+    messageBox.style.cssText = `
+        background: linear-gradient(135deg, #2c3e50, #34495e);
+        border: 3px solid #f39c12; border-radius: 15px;
+        padding: 30px; max-width: 500px; text-align: center;
+        color: white; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+    `;
+    
+    messageBox.innerHTML = `
+        <h2 style="color: #f39c12; margin-bottom: 20px;">Royal Message</h2>
+        <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">${message}</p>
+        <button id="continue-btn" style="background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; border: none; padding: 15px 30px; border-radius: 8px; font-size: 16px; cursor: pointer;">Continue</button>
+    `;
+    
+    overlay.appendChild(messageBox);
+    document.body.appendChild(overlay);
+    
+    document.getElementById('continue-btn').addEventListener('click', () => {
+        document.body.removeChild(overlay);
+        callback();
+    });
 };
 
 Game.prototype.showGameOverScreen = function(title, message) {
@@ -1736,7 +1797,7 @@ Game.prototype.showGameOverScreen = function(title, message) {
             cursor: pointer;
             margin-right: 10px;
         ">Play Again</button>
-        <button id="closeGame" style="
+        <button id="goToMenu" style="
             background: linear-gradient(135deg, #e74c3c, #c0392b);
             color: white;
             border: none;
@@ -1744,7 +1805,7 @@ Game.prototype.showGameOverScreen = function(title, message) {
             border-radius: 8px;
             font-size: 16px;
             cursor: pointer;
-        ">Close</button>
+        ">Go to Menu</button>
     `;
     
     overlay.appendChild(gameOverBox);
@@ -1755,8 +1816,9 @@ Game.prototype.showGameOverScreen = function(title, message) {
         this.restartGame();
     });
     
-    document.getElementById('closeGame').addEventListener('click', () => {
+    document.getElementById('goToMenu').addEventListener('click', () => {
         document.body.removeChild(overlay);
+        window.location.href = 'index.html';
     });
 };
 
@@ -2347,7 +2409,7 @@ Game.prototype.setupEvents = function() {
 
     }, { passive: false });
     
-    document.getElementById('showTutorial').addEventListener('click', () => this.showWelcomePopup());
+    document.getElementById('showOptions').addEventListener('click', () => this.showOptionsDialog());
     document.getElementById('endTurn').addEventListener('click', () => this.endTurn());
     document.getElementById('produceWorker').addEventListener('click', () => this.buildingSystem.produceUnit('worker', 'human'));
     document.getElementById('producePawn').addEventListener('click', () => this.buildingSystem.produceUnit('pawn', 'human'));
@@ -2524,5 +2586,79 @@ Game.prototype.worldToTile = function(worldX, worldY) {
     return null;
 };
 
-
+// Options Dialog
+Game.prototype.showOptionsDialog = function() {
+    const dialog = document.getElementById('options-dialog');
+    dialog.style.display = 'block';
+    
+    // Tab işlevselliği
+    const tabButtons = dialog.querySelectorAll('.tab-btn');
+    const tabPanels = dialog.querySelectorAll('.tab-panel');
+    
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetTab = button.getAttribute('data-tab');
+            
+            // Tüm tab butonlarını pasif yap
+            tabButtons.forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.color = '#bdc3c7';
+                btn.style.borderBottom = 'none';
+            });
+            
+            // Aktif tab butonunu işaretle
+            button.classList.add('active');
+            button.style.color = '#f39c12';
+            button.style.borderBottom = '3px solid #f39c12';
+            
+            // Tüm tab panellerini gizle
+            tabPanels.forEach(panel => {
+                panel.style.display = 'none';
+            });
+            
+            // Hedef tab panelini göster
+            document.getElementById(targetTab + '-tab').style.display = 'block';
+        });
+    });
+    
+    // Müzik volume slider
+    const musicSlider = document.getElementById('music-volume');
+    const volumeDisplay = document.getElementById('volume-display');
+    musicSlider.addEventListener('input', () => {
+        const volume = musicSlider.value;
+        volumeDisplay.textContent = volume + '%';
+        if (this.audioElement) {
+            this.audioElement.volume = volume / 100;
+        }
+    });
+    
+    // Zoom slider
+    const zoomSlider = document.getElementById('zoom-slider');
+    const zoomDisplay = document.getElementById('zoom-display');
+    zoomSlider.addEventListener('input', () => {
+        const zoom = parseFloat(zoomSlider.value);
+        zoomDisplay.textContent = Math.round(zoom * 100) + '%';
+        this.zoomLevel = zoom;
+        this.tileSize.width = this.baseTileSize.width * this.zoomLevel;
+        this.tileSize.height = this.baseTileSize.height * this.zoomLevel;
+        this.render();
+    });
+    
+    // Buton event listener'ları
+    document.getElementById('start-again').addEventListener('click', () => {
+        if (confirm('Are you sure you want to start a new game?')) {
+            location.reload();
+        }
+    });
+    
+    document.getElementById('go-to-menu').addEventListener('click', () => {
+        if (confirm('Are you sure you want to go to the main menu?')) {
+            window.location.href = 'index.html';
+        }
+    });
+    
+    document.getElementById('close-options').addEventListener('click', () => {
+        dialog.style.display = 'none';
+    });
+};
 
