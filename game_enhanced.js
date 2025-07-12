@@ -1031,7 +1031,7 @@ function Game() {
     this.canvas.style.cursor = "url('cursor.cur'), auto";
     this.mapWidth = 26; 
     this.mapHeight = 50;
-    this.tileSize = { width: 64, height: 32 };
+    //this.tileSize = { width: 64, height: 32 };
     this.camera = { x: 0, y: 0 }; 
     this.cameraSpeed = 24;
     this.map = []; 
@@ -1055,14 +1055,27 @@ function Game() {
     this.snowflakes = [];
     this.isSnowing = true;
     this.moveLogMessages = [];
+    //this.zoomLevel = 2.5; // Maksimum zoom ile başla
+    //this.minZoom = 0.5;
+    //this.maxZoom = 2.5;
+    //this.baseTileSize = { width: 64, height: 32 };
+    // --- ZOOM İLE İLGİLİ DEĞİŞİKLİK BURADA ---
+    this.baseTileSize = { width: 64, height: 32 };
     this.zoomLevel = 2.5; // Maksimum zoom ile başla
     this.minZoom = 0.5;
     this.maxZoom = 2.5;
-    this.baseTileSize = { width: 64, height: 32 };
+    // Başlangıç tileSize'ını zoomLevel'a göre hesapla
+    this.tileSize = { 
+        width: this.baseTileSize.width * this.zoomLevel, 
+        height: this.baseTileSize.height * this.zoomLevel 
+    };
+    // --- DEĞİŞİKLİK SONU ---
     this.fogOfWar = new FogOfWar(this.mapWidth, this.mapHeight);
     this.treasureChests = [];
     this.chestSpawnInterval = 20;
     this.level = 1; // Oyuncu seviyesi
+    this.previewTile = null; // YENİ: Fare ile üzerine gelinen butonların önizlemesi için
+    
 }
 
 // Continue with the rest of the game implementation...
@@ -1248,6 +1261,8 @@ Game.prototype.loadAllImages = function() {
 // Modified updateUI to include population display
 Game.prototype.updateUI = function() {
     document.getElementById('turnDisplay').textContent = `Turn: ${this.turn} (${this.currentPlayer.toLowerCase()})`;
+    // YENİ: Level göstergesini güncelleyen satır
+    document.getElementById('levelDisplay').textContent = `Level: ${this.level}`;
     const res = this.humanResources.resources;
     Object.keys(res).forEach(type => {
         const el = document.getElementById(type);
@@ -1378,7 +1393,27 @@ Game.prototype.render = function() {
         this.ctx.fillStyle = move.type === 'attack' ? 'rgba(231, 76, 60, 0.5)' : 'rgba(46, 204, 113, 0.5)'; 
         this.drawIsometricTile(screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height); 
     });
-    
+
+    // ================= YENİ BLOK BAŞLANGICI =================
+    // Render hover preview for unit/building placement
+    if (this.previewTile) {
+        if (this.previewTile.type === 'spawn') {
+            const screenPos = this.tileToScreen(this.previewTile.x, this.previewTile.y);
+            this.ctx.fillStyle = 'rgba(52, 152, 219, 0.6)'; // Spawn için Mavi renk
+            this.drawIsometricTile(screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height);
+        } else if (this.previewTile.type === 'build') {
+            this.ctx.fillStyle = 'rgba(71, 15, 241, 0.6)'; // İnşa için Sarı/Altın renk
+            // Bina 2x2 olduğu için 4 kareyi de vurgula
+            for (let dx = 0; dx < 2; dx++) {
+                for (let dy = 0; dy < 2; dy++) {
+                    const screenPos = this.tileToScreen(this.previewTile.x + dx, this.previewTile.y + dy);
+                    this.drawIsometricTile(screenPos.x, screenPos.y, this.tileSize.width, this.tileSize.height);
+                }
+            }
+        }
+    }
+    // ================= YENİ BLOK SONU =================
+
         // Render units
     this.units.sort((a, b) => (a.x + a.y) - (b.x + b.y)).forEach(unit => { 
         if (this.fogOfWar.getState(unit.x, unit.y) === 2 || unit.owner === 'human') {
@@ -2418,11 +2453,58 @@ Game.prototype.setupEvents = function() {
     document.getElementById('produceKnight').addEventListener('click', () => this.buildingSystem.produceUnit('knight', 'human'));
     document.getElementById('produceQueen').addEventListener('click', () => this.buildingSystem.produceUnit('queen', 'human'));
     
+    /*// NEW: Building buttons
+    document.getElementById('buildHouse').addEventListener('click', () => this.handleBuildingPlacement('house'));
+    document.getElementById('buildBlacksmith').addEventListener('click', () => this.handleBuildingPlacement('blacksmith'));
+    document.getElementById('buildChurch').addEventListener('click', () => this.handleBuildingPlacement('church'));
+    document.getElementById('buildPalace').addEventListener('click', () => this.handleBuildingPlacement('palace'));
+    */
+   // YENİ KOD (YAPIŞTIRMANIZ GEREKEN KISIM)
+
+
+    
     // NEW: Building buttons
     document.getElementById('buildHouse').addEventListener('click', () => this.handleBuildingPlacement('house'));
     document.getElementById('buildBlacksmith').addEventListener('click', () => this.handleBuildingPlacement('blacksmith'));
     document.getElementById('buildChurch').addEventListener('click', () => this.handleBuildingPlacement('church'));
     document.getElementById('buildPalace').addEventListener('click', () => this.handleBuildingPlacement('palace'));
+
+    // ================= YENİ ÖNİZLEME KODU BAŞLANGICI =================
+    // Bu kod, butonların üzerine fare ile gelindiğinde önizleme yapmayı sağlar.
+    const humanKing = this.units.find(u => u.owner === 'human' && u.type === 'king');
+
+    // Unit butonları için önizleme
+    document.querySelectorAll('#unitButtons .unit-btn').forEach(button => {
+        button.addEventListener('mouseenter', () => {
+            if (this.currentPlayer !== 'human') return; // Sadece bizim sıramızdaysa göster
+            if (!humanKing) return;
+            const spawnLoc = this.buildingSystem.findSpawnLocation(humanKing.x, humanKing.y, 'human');
+            if (spawnLoc) {
+                this.previewTile = { x: spawnLoc.x, y: spawnLoc.y, type: 'spawn' };
+            }
+        });
+        button.addEventListener('mouseleave', () => {
+            this.previewTile = null;
+        });
+    });
+
+    // Building butonları için önizleme
+    document.querySelectorAll('#buildingButtons .building-btn').forEach(button => {
+        button.addEventListener('mouseenter', () => {
+            if (this.currentPlayer !== 'human') return; // Sadece bizim sıramızdaysa göster
+            if (!humanKing) return;
+            const buildLoc = this.buildingSystem.findBuildingLocation(humanKing.x, humanKing.y, 'human');
+            if (buildLoc) {
+                this.previewTile = { x: buildLoc.x, y: buildLoc.y, type: 'build' };
+            }
+        });
+        button.addEventListener('mouseleave', () => {
+            this.previewTile = null;
+        });
+    });
+    // ================= YENİ ÖNİZLEME KODU SONU =================
+
+
 };
 
 // NEW: Handle building placement
